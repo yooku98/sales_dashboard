@@ -8,6 +8,9 @@ import plotly.graph_objects as go
 from datetime import datetime
 from dash import ctx
 
+app = Dash(__name__)
+server = app.server
+
 @app.callback(
     Output("data-store", "data"),
     [
@@ -55,9 +58,6 @@ def update_storage(contents, manual_data, add_row_clicks, clear_clicks, filename
 
     # Default
     return stored_data
-
-app = Dash(__name__)
-server = app.server
 
 DATA_PATH = "data"
 csv_path = os.path.join(DATA_PATH, "sales.csv")
