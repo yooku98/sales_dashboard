@@ -613,30 +613,46 @@ def manage_data(add_clicks, clear_clicks, upload_contents, date, product, sales,
     raise PreventUpdate
 
 def parse_uploaded_file(contents, filename):
-    """Parse uploaded CSV or Excel file"""
+    """Parse uploaded CSV or Excel file safely."""
     if not contents:
         return None
-    
+
     try:
         content_type, content_string = contents.split(',')
         decoded = base64.b64decode(content_string)
 
-        if filename.endswith('.csv'):
-            df = pd.read_csv(io.StringIO(decoded.decode('utf-8')))
-        elif filename.endswith('.xlsx') or filename.endswith('.xls'):
+        # Load file depending on extension
+        if filename.lower().endswith('.csv'):
+            df = pd.read_csv(
+                io.StringIO(decoded.decode('utf-8', errors='ignore')),
+                skip_blank_lines=True
+            )
+
+        elif filename.lower().endswith(('.xlsx', '.xls')):
             df = pd.read_excel(io.BytesIO(decoded))
+
         else:
             return None
-        
+
+        # Clean columns
         df.columns = df.columns.str.strip().str.lower()
-        
-        if 'date' in df.columns:
-            df['date'] = pd.to_datetime(df['date'], errors='coerce')
-        
+
+        # Force required columns to exist
+        required = ['date', 'product', 'sales']
+        for col in required:
+            if col not in df.columns:
+                df[col] = None  # Create empty col
+
+        # Drop completely blank rows
+        df = df.dropna(how='all')
+
+        # Fix date column
+        df['date'] = pd.to_datetime(df['date'], errors='coerce')
+
         return df
-    
+
     except Exception as e:
-        print(f"Error parsing file: {e}")
+        print("File parse error:", e)
         return None
 
 def create_stat_card(title, value, icon, color):
