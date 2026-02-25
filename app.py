@@ -2,9 +2,10 @@ import base64
 import io
 import os
 import pandas as pd
-from dash import Dash, dcc, html, Input, Output, State, dash_table
+from dash import Dash, dcc, html, Input, Output, State, dash_table, ALL
 import plotly.express as px
 import plotly.graph_objects as go
+from datetime import datetime
 
 app = Dash(__name__)
 server = app.server
@@ -51,6 +52,9 @@ app.layout = html.Div(
         'fontFamily': "'Segoe UI', Tahoma, Geneva, Verdana, sans-serif"
     },
     children=[
+        # Hidden div to store data
+        dcc.Store(id='stored-data', data=df.to_dict('records')),
+        
         # Header
         html.Div(
             style={
@@ -71,7 +75,7 @@ app.layout = html.Div(
                     }
                 ),
                 html.P(
-                    "Upload your sales data and visualize insights instantly",
+                    "Upload files or enter data manually to visualize insights instantly",
                     style={
                         'margin': '10px 0 0 0',
                         'fontSize': '1.1em',
@@ -86,7 +90,7 @@ app.layout = html.Div(
         html.Div(
             style={'maxWidth': '1400px', 'margin': '0 auto', 'padding': '0 20px'},
             children=[
-                # Upload Section
+                # Input Methods Tabs
                 html.Div(
                     style={
                         'backgroundColor': COLORS['white'],
@@ -96,69 +100,241 @@ app.layout = html.Div(
                         'boxShadow': '0 2px 8px rgba(0,0,0,0.1)'
                     },
                     children=[
-                        html.H3(
-                            "📤 Upload Your Data",
+                        # Tab Buttons
+                        html.Div(
                             style={
-                                'color': COLORS['dark'],
-                                'marginBottom': '20px',
-                                'fontSize': '1.5em'
-                            }
-                        ),
-                        dcc.Upload(
-                            id="upload-data",
-                            children=html.Div([
-                                html.Div(
-                                    "📁",
-                                    style={'fontSize': '3em', 'marginBottom': '10px'}
-                                ),
-                                html.Div(
-                                    "Drag and Drop or Click to Select",
-                                    style={'fontSize': '1.2em', 'fontWeight': '600'}
-                                ),
-                                html.Div(
-                                    "Supports CSV and Excel (.xlsx) files",
+                                'display': 'flex',
+                                'gap': '10px',
+                                'marginBottom': '25px',
+                                'borderBottom': '2px solid #e5e7eb',
+                                'paddingBottom': '10px'
+                            },
+                            children=[
+                                html.Button(
+                                    "📤 Upload File",
+                                    id="tab-upload",
+                                    n_clicks=0,
                                     style={
-                                        'fontSize': '0.9em',
-                                        'color': '#6b7280',
-                                        'marginTop': '5px'
+                                        'padding': '12px 25px',
+                                        'border': 'none',
+                                        'borderRadius': '8px',
+                                        'cursor': 'pointer',
+                                        'fontSize': '1em',
+                                        'fontWeight': '600',
+                                        'backgroundColor': COLORS['primary'],
+                                        'color': 'white',
+                                        'transition': 'all 0.3s'
+                                    }
+                                ),
+                                html.Button(
+                                    "✏️ Enter Manually",
+                                    id="tab-manual",
+                                    n_clicks=0,
+                                    style={
+                                        'padding': '12px 25px',
+                                        'border': f'2px solid {COLORS["primary"]}',
+                                        'borderRadius': '8px',
+                                        'cursor': 'pointer',
+                                        'fontSize': '1em',
+                                        'fontWeight': '600',
+                                        'backgroundColor': 'white',
+                                        'color': COLORS['primary'],
+                                        'transition': 'all 0.3s'
                                     }
                                 )
-                            ]),
-                            style={
-                                'width': '100%',
-                                'height': '150px',
-                                'lineHeight': 'normal',
-                                'borderWidth': '2px',
-                                'borderStyle': 'dashed',
-                                'borderRadius': '10px',
-                                'borderColor': COLORS['primary'],
-                                'textAlign': 'center',
-                                'backgroundColor': '#f9fafb',
-                                'cursor': 'pointer',
-                                'display': 'flex',
-                                'alignItems': 'center',
-                                'justifyContent': 'center',
-                                'transition': 'all 0.3s ease'
-                            },
-                            multiple=False
+                            ]
                         ),
                         
-                        # Upload Status
+                        # Upload Section
                         html.Div(
-                            id="upload-status",
+                            id="upload-section",
+                            children=[
+                                html.H3(
+                                    "📤 Upload Your Data",
+                                    style={
+                                        'color': COLORS['dark'],
+                                        'marginBottom': '20px',
+                                        'fontSize': '1.5em'
+                                    }
+                                ),
+                                dcc.Upload(
+                                    id="upload-data",
+                                    children=html.Div([
+                                        html.Div(
+                                            "📁",
+                                            style={'fontSize': '3em', 'marginBottom': '10px'}
+                                        ),
+                                        html.Div(
+                                            "Drag and Drop or Click to Select",
+                                            style={'fontSize': '1.2em', 'fontWeight': '600'}
+                                        ),
+                                        html.Div(
+                                            "Supports CSV and Excel (.xlsx) files",
+                                            style={
+                                                'fontSize': '0.9em',
+                                                'color': '#6b7280',
+                                                'marginTop': '5px'
+                                            }
+                                        )
+                                    ]),
+                                    style={
+                                        'width': '100%',
+                                        'height': '150px',
+                                        'lineHeight': 'normal',
+                                        'borderWidth': '2px',
+                                        'borderStyle': 'dashed',
+                                        'borderRadius': '10px',
+                                        'borderColor': COLORS['primary'],
+                                        'textAlign': 'center',
+                                        'backgroundColor': '#f9fafb',
+                                        'cursor': 'pointer',
+                                        'display': 'flex',
+                                        'alignItems': 'center',
+                                        'justifyContent': 'center',
+                                        'transition': 'all 0.3s ease'
+                                    },
+                                    multiple=False
+                                ),
+                            ]
+                        ),
+                        
+                        # Manual Entry Section
+                        html.Div(
+                            id="manual-section",
+                            style={'display': 'none'},
+                            children=[
+                                html.H3(
+                                    "✏️ Enter Sales Data",
+                                    style={
+                                        'color': COLORS['dark'],
+                                        'marginBottom': '20px',
+                                        'fontSize': '1.5em'
+                                    }
+                                ),
+                                
+                                # Input Form
+                                html.Div(
+                                    style={
+                                        'display': 'grid',
+                                        'gridTemplateColumns': '1fr 1fr 1fr auto',
+                                        'gap': '15px',
+                                        'alignItems': 'end',
+                                        'marginBottom': '20px'
+                                    },
+                                    children=[
+                                        html.Div([
+                                            html.Label(
+                                                "Date",
+                                                style={
+                                                    'display': 'block',
+                                                    'marginBottom': '5px',
+                                                    'fontWeight': '600',
+                                                    'color': COLORS['dark']
+                                                }
+                                            ),
+                                            dcc.DatePickerSingle(
+                                                id='input-date',
+                                                date=datetime.today().strftime('%Y-%m-%d'),
+                                                display_format='YYYY-MM-DD',
+                                                style={'width': '100%'}
+                                            )
+                                        ]),
+                                        html.Div([
+                                            html.Label(
+                                                "Product",
+                                                style={
+                                                    'display': 'block',
+                                                    'marginBottom': '5px',
+                                                    'fontWeight': '600',
+                                                    'color': COLORS['dark']
+                                                }
+                                            ),
+                                            dcc.Input(
+                                                id='input-product',
+                                                type='text',
+                                                placeholder='Enter product name',
+                                                style={
+                                                    'width': '100%',
+                                                    'padding': '10px',
+                                                    'border': '2px solid #e5e7eb',
+                                                    'borderRadius': '8px',
+                                                    'fontSize': '1em'
+                                                }
+                                            )
+                                        ]),
+                                        html.Div([
+                                            html.Label(
+                                                "Sales ($)",
+                                                style={
+                                                    'display': 'block',
+                                                    'marginBottom': '5px',
+                                                    'fontWeight': '600',
+                                                    'color': COLORS['dark']
+                                                }
+                                            ),
+                                            dcc.Input(
+                                                id='input-sales',
+                                                type='number',
+                                                placeholder='Enter amount',
+                                                style={
+                                                    'width': '100%',
+                                                    'padding': '10px',
+                                                    'border': '2px solid #e5e7eb',
+                                                    'borderRadius': '8px',
+                                                    'fontSize': '1em'
+                                                }
+                                            )
+                                        ]),
+                                        html.Button(
+                                            "➕ Add",
+                                            id='add-data-btn',
+                                            n_clicks=0,
+                                            style={
+                                                'padding': '10px 25px',
+                                                'backgroundColor': COLORS['success'],
+                                                'color': 'white',
+                                                'border': 'none',
+                                                'borderRadius': '8px',
+                                                'cursor': 'pointer',
+                                                'fontSize': '1em',
+                                                'fontWeight': '600',
+                                                'transition': 'all 0.3s'
+                                            }
+                                        )
+                                    ]
+                                ),
+                                
+                                # Clear Data Button
+                                html.Button(
+                                    "🗑️ Clear All Data",
+                                    id='clear-data-btn',
+                                    n_clicks=0,
+                                    style={
+                                        'padding': '10px 20px',
+                                        'backgroundColor': COLORS['danger'],
+                                        'color': 'white',
+                                        'border': 'none',
+                                        'borderRadius': '8px',
+                                        'cursor': 'pointer',
+                                        'fontSize': '0.9em',
+                                        'fontWeight': '600',
+                                        'marginTop': '10px'
+                                    }
+                                )
+                            ]
+                        ),
+                        
+                        # Status Message
+                        html.Div(
+                            id="status-message",
                             style={
                                 'marginTop': '15px',
-                                'padding': '10px',
+                                'padding': '12px',
                                 'borderRadius': '8px',
                                 'textAlign': 'center',
-                                'fontSize': '0.95em'
+                                'fontSize': '0.95em',
+                                'display': 'none'
                             }
-                        ),
-
-                        # Data Preview
-                        html.Div(
-                            id="data-preview-container",
-                            style={'marginTop': '20px'}
                         )
                     ]
                 ),
@@ -226,6 +402,18 @@ app.layout = html.Div(
                         )
                     ]
                 ),
+                
+                # Data Table Section
+                html.Div(
+                    id="data-table-container",
+                    style={
+                        'backgroundColor': COLORS['white'],
+                        'borderRadius': '15px',
+                        'padding': '25px',
+                        'boxShadow': '0 2px 8px rgba(0,0,0,0.1)',
+                        'marginBottom': '30px'
+                    }
+                ),
 
                 # Footer
                 html.Div(
@@ -244,29 +432,204 @@ app.layout = html.Div(
     ]
 )
 
+# Tab switching callbacks
+@app.callback(
+    [Output('upload-section', 'style'),
+     Output('manual-section', 'style'),
+     Output('tab-upload', 'style'),
+     Output('tab-manual', 'style')],
+    [Input('tab-upload', 'n_clicks'),
+     Input('tab-manual', 'n_clicks')]
+)
+def switch_tabs(upload_clicks, manual_clicks):
+    """Switch between upload and manual entry tabs"""
+    # Determine which tab was clicked last
+    if upload_clicks > manual_clicks:
+        return (
+            {'display': 'block'},  # Show upload
+            {'display': 'none'},   # Hide manual
+            {
+                'padding': '12px 25px',
+                'border': 'none',
+                'borderRadius': '8px',
+                'cursor': 'pointer',
+                'fontSize': '1em',
+                'fontWeight': '600',
+                'backgroundColor': COLORS['primary'],
+                'color': 'white'
+            },
+            {
+                'padding': '12px 25px',
+                'border': f'2px solid {COLORS["primary"]}',
+                'borderRadius': '8px',
+                'cursor': 'pointer',
+                'fontSize': '1em',
+                'fontWeight': '600',
+                'backgroundColor': 'white',
+                'color': COLORS['primary']
+            }
+        )
+    else:
+        return (
+            {'display': 'none'},   # Hide upload
+            {'display': 'block'},  # Show manual
+            {
+                'padding': '12px 25px',
+                'border': f'2px solid {COLORS["primary"]}',
+                'borderRadius': '8px',
+                'cursor': 'pointer',
+                'fontSize': '1em',
+                'fontWeight': '600',
+                'backgroundColor': 'white',
+                'color': COLORS['primary']
+            },
+            {
+                'padding': '12px 25px',
+                'border': 'none',
+                'borderRadius': '8px',
+                'cursor': 'pointer',
+                'fontSize': '1em',
+                'fontWeight': '600',
+                'backgroundColor': COLORS['primary'],
+                'color': 'white'
+            }
+        )
+
+# Add/Clear data callbacks
+@app.callback(
+    [Output('stored-data', 'data'),
+     Output('status-message', 'children'),
+     Output('status-message', 'style'),
+     Output('input-product', 'value'),
+     Output('input-sales', 'value')],
+    [Input('add-data-btn', 'n_clicks'),
+     Input('clear-data-btn', 'n_clicks'),
+     Input('upload-data', 'contents')],
+    [State('input-date', 'date'),
+     State('input-product', 'value'),
+     State('input-sales', 'value'),
+     State('stored-data', 'data'),
+     State('upload-data', 'filename')]
+)
+def manage_data(add_clicks, clear_clicks, upload_contents, date, product, sales, current_data, filename):
+    """Add new data or clear all data"""
+    from dash.exceptions import PreventUpdate
+    from dash import callback_context
+    
+    if not callback_context.triggered:
+        raise PreventUpdate
+    
+    trigger_id = callback_context.triggered[0]['prop_id'].split('.')[0]
+    
+    # Load current data
+    data_df = pd.DataFrame(current_data) if current_data else pd.DataFrame()
+    
+    # Handle file upload
+    if trigger_id == 'upload-data' and upload_contents and filename:
+        uploaded_df = parse_uploaded_file(upload_contents, filename)
+        if uploaded_df is not None and not uploaded_df.empty:
+            return (
+                uploaded_df.to_dict('records'),
+                f"✅ Successfully loaded: {filename} ({len(uploaded_df)} rows)",
+                {
+                    'marginTop': '15px',
+                    'padding': '12px',
+                    'borderRadius': '8px',
+                    'textAlign': 'center',
+                    'fontSize': '0.95em',
+                    'backgroundColor': '#d1fae5',
+                    'color': '#065f46',
+                    'border': f'1px solid {COLORS["success"]}',
+                    'display': 'block'
+                },
+                '', None
+            )
+    
+    # Handle add data
+    if trigger_id == 'add-data-btn' and add_clicks > 0:
+        if not date or not product or sales is None:
+            return (
+                current_data,
+                "❌ Please fill in all fields",
+                {
+                    'marginTop': '15px',
+                    'padding': '12px',
+                    'borderRadius': '8px',
+                    'textAlign': 'center',
+                    'fontSize': '0.95em',
+                    'backgroundColor': '#fee2e2',
+                    'color': '#991b1b',
+                    'border': f'1px solid {COLORS["danger"]}',
+                    'display': 'block'
+                },
+                product, sales
+            )
+        
+        # Add new row
+        new_row = pd.DataFrame({
+            'date': [pd.to_datetime(date)],
+            'product': [product],
+            'sales': [float(sales)]
+        })
+        
+        data_df = pd.concat([data_df, new_row], ignore_index=True)
+        
+        return (
+            data_df.to_dict('records'),
+            f"✅ Added: {product} - ${sales} on {date}",
+            {
+                'marginTop': '15px',
+                'padding': '12px',
+                'borderRadius': '8px',
+                'textAlign': 'center',
+                'fontSize': '0.95em',
+                'backgroundColor': '#d1fae5',
+                'color': '#065f46',
+                'border': f'1px solid {COLORS["success"]}',
+                'display': 'block'
+            },
+            '', None  # Clear inputs
+        )
+    
+    # Handle clear data
+    if trigger_id == 'clear-data-btn' and clear_clicks > 0:
+        return (
+            [],
+            "✅ All data cleared",
+            {
+                'marginTop': '15px',
+                'padding': '12px',
+                'borderRadius': '8px',
+                'textAlign': 'center',
+                'fontSize': '0.95em',
+                'backgroundColor': '#d1fae5',
+                'color': '#065f46',
+                'border': f'1px solid {COLORS["success"]}',
+                'display': 'block'
+            },
+            '', None
+        )
+    
+    raise PreventUpdate
+
 def parse_uploaded_file(contents, filename):
     """Parse uploaded CSV or Excel file"""
     if not contents:
         return None
     
     try:
-        # Split the content string
         content_type, content_string = contents.split(',')
         decoded = base64.b64decode(content_string)
 
         if filename.endswith('.csv'):
-            # Parse CSV
             df = pd.read_csv(io.StringIO(decoded.decode('utf-8')))
         elif filename.endswith('.xlsx') or filename.endswith('.xls'):
-            # Parse Excel
             df = pd.read_excel(io.BytesIO(decoded))
         else:
             return None
         
-        # Clean column names (remove whitespace)
         df.columns = df.columns.str.strip().str.lower()
         
-        # Try to parse date column if it exists
         if 'date' in df.columns:
             df['date'] = pd.to_datetime(df['date'], errors='coerce')
         
@@ -323,54 +686,26 @@ def create_stat_card(title, value, icon, color):
 @app.callback(
     [Output("sales-line-chart", "figure"),
      Output("product-bar-chart", "figure"),
-     Output("upload-status", "children"),
-     Output("upload-status", "style"),
      Output("stats-cards", "children"),
-     Output("data-preview-container", "children")],
-    [Input("upload-data", "contents")],
-    [State("upload-data", "filename")]
+     Output("data-table-container", "children")],
+    [Input("stored-data", "data")]
 )
-def update_dashboard(contents, filename):
-    """Update all dashboard components"""
-    data = df.copy()  # Start with default data
-    status_msg = ""
-    status_style = {'display': 'none'}
+def update_dashboard(stored_data):
+    """Update all dashboard components based on stored data"""
     
-    # Handle file upload
-    if contents and filename:
-        uploaded_df = parse_uploaded_file(contents, filename)
-        
-        if uploaded_df is not None and not uploaded_df.empty:
-            data = uploaded_df
-            status_msg = f"✅ Successfully loaded: {filename} ({len(data)} rows, {len(data.columns)} columns)"
-            status_style = {
-                'marginTop': '15px',
-                'padding': '12px',
-                'borderRadius': '8px',
-                'textAlign': 'center',
-                'fontSize': '0.95em',
-                'backgroundColor': '#d1fae5',
-                'color': '#065f46',
-                'border': f'1px solid {COLORS["success"]}'
-            }
-        else:
-            status_msg = "❌ Error: Could not parse file. Please ensure it's a valid CSV or Excel file."
-            status_style = {
-                'marginTop': '15px',
-                'padding': '12px',
-                'borderRadius': '8px',
-                'textAlign': 'center',
-                'fontSize': '0.95em',
-                'backgroundColor': '#fee2e2',
-                'color': '#991b1b',
-                'border': f'1px solid {COLORS["danger"]}'
-            }
+    # Convert stored data to DataFrame
+    if stored_data:
+        data = pd.DataFrame(stored_data)
+        if 'date' in data.columns:
+            data['date'] = pd.to_datetime(data['date'])
+    else:
+        data = pd.DataFrame()
     
     # Create statistics cards
     stats_cards = []
-    if not data.empty:
-        total_sales = data['sales'].sum() if 'sales' in data.columns else 0
-        avg_sales = data['sales'].mean() if 'sales' in data.columns else 0
+    if not data.empty and 'sales' in data.columns:
+        total_sales = data['sales'].sum()
+        avg_sales = data['sales'].mean()
         total_products = data['product'].nunique() if 'product' in data.columns else 0
         total_records = len(data)
         
@@ -382,7 +717,7 @@ def update_dashboard(contents, filename):
         ]
     
     # Create line chart
-    if 'date' in data.columns and 'sales' in data.columns:
+    if not data.empty and 'date' in data.columns and 'sales' in data.columns:
         data_sorted = data.sort_values('date')
         line_fig = px.line(
             data_sorted,
@@ -407,7 +742,7 @@ def update_dashboard(contents, filename):
     else:
         line_fig = go.Figure()
         line_fig.add_annotation(
-            text="Missing 'date' or 'sales' column<br>Please upload data with these columns",
+            text="No data available<br>Upload a file or enter data manually",
             showarrow=False,
             font=dict(size=14, color='#6b7280')
         )
@@ -419,7 +754,7 @@ def update_dashboard(contents, filename):
         )
     
     # Create bar chart
-    if 'product' in data.columns and 'sales' in data.columns:
+    if not data.empty and 'product' in data.columns and 'sales' in data.columns:
         product_sales = data.groupby('product')['sales'].sum().reset_index()
         product_sales = product_sales.sort_values('sales', ascending=False).head(10)
         
@@ -445,7 +780,7 @@ def update_dashboard(contents, filename):
     else:
         bar_fig = go.Figure()
         bar_fig.add_annotation(
-            text="Missing 'product' or 'sales' column<br>Please upload data with these columns",
+            text="No data available<br>Upload a file or enter data manually",
             showarrow=False,
             font=dict(size=14, color='#6b7280')
         )
@@ -456,18 +791,19 @@ def update_dashboard(contents, filename):
             margin=dict(l=0, r=0, t=0, b=0)
         )
     
-    # Create data preview table
-    data_preview = None
-    if not data.empty and contents:
-        preview_data = data.head(5)
-        data_preview = html.Div([
-            html.H4(
-                "📋 Data Preview (First 5 rows)",
+    # Create data table
+    data_table = None
+    if not data.empty:
+        display_data = data.sort_values('date', ascending=False) if 'date' in data.columns else data
+        data_table = html.Div([
+            html.H3(
+                f"📋 All Sales Data ({len(data)} records)",
                 style={'color': COLORS['dark'], 'marginBottom': '15px'}
             ),
             dash_table.DataTable(
-                data=preview_data.to_dict('records'),
-                columns=[{'name': col, 'id': col} for col in preview_data.columns],
+                data=display_data.to_dict('records'),
+                columns=[{'name': col.title(), 'id': col} for col in display_data.columns],
+                page_size=10,
                 style_table={'overflowX': 'auto'},
                 style_cell={
                     'textAlign': 'left',
@@ -492,7 +828,7 @@ def update_dashboard(contents, filename):
             )
         ])
     
-    return line_fig, bar_fig, status_msg, status_style, stats_cards, data_preview
+    return line_fig, bar_fig, stats_cards, data_table
 
 
 if __name__ == "__main__":
