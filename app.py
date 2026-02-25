@@ -6,6 +6,55 @@ from dash import Dash, dcc, html, Input, Output, State, dash_table, ALL
 import plotly.express as px
 import plotly.graph_objects as go
 from datetime import datetime
+from dash import ctx
+
+@app.callback(
+    Output("data-store", "data"),
+    [
+        Input("upload-data", "contents"),
+        Input("manual-table", "data"),
+        Input("add-row-btn", "n_clicks"),
+        Input("clear-data-btn", "n_clicks")
+    ],
+    State("upload-data", "filename"),
+    State("data-store", "data"),
+)
+def update_storage(contents, manual_data, add_row_clicks, clear_clicks, filename, stored_data):
+    trigger = ctx.triggered_id
+
+    # ---------------------------------------------------
+    # CLEAR BUTTON
+    # ---------------------------------------------------
+    if trigger == "clear-data-btn":
+        return []
+
+    # ---------------------------------------------------
+    # ADD ROW (just adds empty rows to the manual table, not stored yet)
+    # You'll process manual_data below anyway
+    # ---------------------------------------------------
+    if trigger == "add-row-btn":
+        return manual_data
+
+    # ---------------------------------------------------
+    # UPLOAD FILE
+    # ---------------------------------------------------
+    if trigger == "upload-data" and contents is not None:
+        df = parse_uploaded_file(contents, filename)
+        if df is not None:
+            return df.to_dict("records")
+        return stored_data
+
+    # ---------------------------------------------------
+    # MANUAL INPUT TABLE
+    # ---------------------------------------------------
+    if trigger == "manual-table":
+        if manual_data is not None:
+            df = pd.DataFrame(manual_data)
+            df = df.dropna(how="all")  # drop fully empty rows
+            return df.to_dict("records")
+
+    # Default
+    return stored_data
 
 app = Dash(__name__)
 server = app.server
