@@ -424,7 +424,7 @@ app.layout = html.Div(
                         'fontSize': '0.9em'
                     },
                     children=[
-                        "Built with ❤️ using Plotly Dash"
+                        html.Li(html.A("William Thompson", href="https://yooku98.github.io/web"))
                     ]
                 )
             ]
