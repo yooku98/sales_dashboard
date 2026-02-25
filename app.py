@@ -754,10 +754,32 @@ def update_dashboard(stored_data):
         )
     
     # Create bar chart
-    if not data.empty and 'product' in data.columns and 'sales' in data.columns:
-        product_sales = data.groupby('product')['sales'].sum().reset_index()
+if not data.empty and 'product' in data.columns and 'sales' in data.columns:
+
+    # Clean rows where product or sales is empty
+    data = data.dropna(subset=['product', 'sales'])
+
+    if data.empty:
+        bar_fig = go.Figure()
+        bar_fig.add_annotation(
+            text="No valid product or sales data found",
+            showarrow=False,
+            font=dict(size=14, color='#6b7280')
+        )
+    else:
+        # Compute product totals
+        product_sales = (
+            data.groupby('product', dropna=True)['sales']
+            .sum()
+            .reset_index()
+        )
+
+        # Remove blank product names
+        product_sales = product_sales[product_sales['product'].astype(str).str.strip() != ""]
+
+        # Sort top 10
         product_sales = product_sales.sort_values('sales', ascending=False).head(10)
-        
+
         bar_fig = px.bar(
             product_sales,
             x='product',
@@ -777,19 +799,20 @@ def update_dashboard(stored_data):
             height=300,
             xaxis={'categoryorder': 'total descending'}
         )
-    else:
-        bar_fig = go.Figure()
-        bar_fig.add_annotation(
-            text="No data available<br>Upload a file or enter data manually",
-            showarrow=False,
-            font=dict(size=14, color='#6b7280')
-        )
-        bar_fig.update_layout(
-            plot_bgcolor='white',
-            paper_bgcolor='white',
-            height=300,
-            margin=dict(l=0, r=0, t=0, b=0)
-        )
+
+else:
+    bar_fig = go.Figure()
+    bar_fig.add_annotation(
+        text="No data available<br>Upload a file or enter data manually",
+        showarrow=False,
+        font=dict(size=14, color='#6b7280')
+    )
+    bar_fig.update_layout(
+        plot_bgcolor='white',
+        paper_bgcolor='white',
+        height=300,
+        margin=dict(l=0, r=0, t=0, b=0)
+    )
     
     # Create data table
     data_table = None
