@@ -263,7 +263,7 @@ app.layout = html.Div(
                                               placeholder='Enter product name', style=INPUT_STYLE),
                                 ]),
                                 html.Div([
-                                    html.Label('Sales ($)', style=LABEL_STYLE),
+                                    html.Label('Sales (GH₵)', style=LABEL_STYLE),
                                     dcc.Input(id='input-sales', type='number', min=0,
                                               placeholder='Enter amount', style=INPUT_STYLE),
                                 ]),
@@ -449,7 +449,7 @@ def manage_data(add_clicks, clear_clicks, upload_contents,
         combined = pd.concat([existing, new_row], ignore_index=True)
         return (
             combined.to_dict('records'),
-            f'✅ Added: {product.strip()} — ${sales_val:,.2f} on {date}',
+            f'✅ Added: {product.strip()} — GH₵{sales_val:,.2f} on {date}',
             ok_style(), '', None,
         )
 
@@ -488,8 +488,8 @@ def update_dashboard(stored_data):
     else:
         valid_sales = data['sales'].dropna()
         stats_cards = [
-            create_stat_card('Total Sales',   f"${valid_sales.sum():,.0f}",   '💰', COLORS['success']),
-            create_stat_card('Average Sale',  f"${valid_sales.mean():,.0f}",  '📊', COLORS['primary']),
+            create_stat_card('Total Sales',   f"GH₵{valid_sales.sum():,.0f}",   '💰', COLORS['success']),
+            create_stat_card('Average Sale',  f"GH₵{valid_sales.mean():,.0f}",  '📊', COLORS['primary']),
             create_stat_card('Products',      str(data['product'].nunique()),  '🏷️', COLORS['warning']),
             create_stat_card('Records',       str(len(data)),                  '📝', COLORS['secondary']),
         ]
@@ -509,7 +509,7 @@ def update_dashboard(stored_data):
         else:
             line_fig = px.line(
                 daily, x='date', y='sales',
-                labels={'date': 'Date', 'sales': 'Total Sales ($)'},
+                labels={'date': 'Date', 'sales': 'Total Sales (GH₵)'},
             )
             line_fig.update_traces(
                 line_color=COLORS['primary'], line_width=3,
@@ -525,7 +525,7 @@ def update_dashboard(stored_data):
                 xaxis=dict(showgrid=False, showline=True, linecolor='#e5e7eb',
                            tickfont=dict(size=11)),
                 yaxis=dict(showgrid=True, gridcolor='#f3f4f6', showline=False,
-                           tickprefix='$', tickfont=dict(size=11)),
+                           tickprefix='GH₵', tickfont=dict(size=11)),
             )
 
     # ── Bar chart — aggregate by product ──────────────────────────────────────
@@ -544,7 +544,7 @@ def update_dashboard(stored_data):
         else:
             bar_fig = px.bar(
                 product_sales, x='product', y='sales',
-                labels={'product': 'Product', 'sales': 'Total Sales ($)'},
+                labels={'product': 'Product', 'sales': 'Total Sales (GH₵)'},
                 color='sales',
                 color_continuous_scale=[[0, COLORS['primary']], [1, COLORS['secondary']]],
             )
@@ -558,7 +558,7 @@ def update_dashboard(stored_data):
                 xaxis=dict(showgrid=False, showline=True, linecolor='#e5e7eb',
                            categoryorder='total descending', tickfont=dict(size=11)),
                 yaxis=dict(showgrid=True, gridcolor='#f3f4f6', showline=False,
-                           tickprefix='$', tickfont=dict(size=11)),
+                           tickprefix='GH₵', tickfont=dict(size=11)),
             )
 
     # ── Data table ────────────────────────────────────────────────────────────
