@@ -31,7 +31,6 @@ COLORS = {
     'white':     '#ffffff',
 }
 
-# Chart height used both in Python layout and CSS — single source of truth
 CHART_H = 320
 
 CSS = f"""
@@ -39,7 +38,6 @@ CSS = f"""
 *, *::before, *::after {{ box-sizing: border-box; }}
 body {{ margin: 0; padding: 0; -webkit-text-size-adjust: 100%; overflow-x: hidden; }}
 
-/* ── Header ── */
 #app-header {{ padding: 28px 24px; text-align: center; }}
 @media (max-width: 500px) {{
   #app-header {{ padding: 18px 14px; }}
@@ -47,11 +45,9 @@ body {{ margin: 0; padding: 0; -webkit-text-size-adjust: 100%; overflow-x: hidde
   .hdr-sub   {{ font-size: 0.85em !important; }}
 }}
 
-/* ── Main container ── */
 #main-container {{ max-width: 1400px; margin: 0 auto; padding: 0 20px; }}
 @media (max-width: 500px) {{ #main-container {{ padding: 0 12px; }} }}
 
-/* ── Stats: 4-col → 2-col ── */
 #stats-cards {{
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
@@ -60,7 +56,6 @@ body {{ margin: 0; padding: 0; -webkit-text-size-adjust: 100%; overflow-x: hidde
 }}
 @media (max-width: 860px) {{ #stats-cards {{ grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }} }}
 
-/* ── Charts: 2-col → 1-col ── */
 #charts-row {{
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -69,7 +64,6 @@ body {{ margin: 0; padding: 0; -webkit-text-size-adjust: 100%; overflow-x: hidde
 }}
 @media (max-width: 760px) {{ #charts-row {{ grid-template-columns: 1fr; }} }}
 
-/* Chart card: DO NOT clip — let it expand to fit the graph */
 .chart-card {{
   background: white;
   border-radius: 14px;
@@ -78,14 +72,12 @@ body {{ margin: 0; padding: 0; -webkit-text-size-adjust: 100%; overflow-x: hidde
   min-width: 0;
 }}
 
-/* Graph wrapper: exact height, no overflow clipping */
 .graph-wrap {{
   width: 100%;
   height: {CHART_H}px;
   position: relative;
 }}
 
-/* Plotly fills wrapper exactly */
 .graph-wrap .js-plotly-plot,
 .graph-wrap .plot-container,
 .graph-wrap .svg-container {{
@@ -93,7 +85,6 @@ body {{ margin: 0; padding: 0; -webkit-text-size-adjust: 100%; overflow-x: hidde
   height: 100% !important;
 }}
 
-/* ── Input card ── */
 .input-card {{
   background: white;
   border-radius: 14px;
@@ -102,7 +93,6 @@ body {{ margin: 0; padding: 0; -webkit-text-size-adjust: 100%; overflow-x: hidde
   margin-bottom: 18px;
 }}
 
-/* ── Manual form: 4-col → 2-col → 1-col ── */
 #manual-form-grid {{
   display: grid;
   grid-template-columns: minmax(0,1fr) minmax(0,1fr) minmax(0,1fr) auto;
@@ -114,20 +104,17 @@ body {{ margin: 0; padding: 0; -webkit-text-size-adjust: 100%; overflow-x: hidde
 @media (max-width: 680px) {{ #manual-form-grid {{ grid-template-columns: minmax(0,1fr) minmax(0,1fr); }} }}
 @media (max-width: 420px) {{ #manual-form-grid {{ grid-template-columns: 1fr; }} }}
 
-/* Full-width buttons on mobile */
 @media (max-width: 680px) {{
   #add-data-btn   {{ width: 100%; }}
   #clear-data-btn {{ width: 100%; margin-top: 6px; }}
 }}
 
-/* Tab buttons: stretch on tiny screens */
 .tab-row {{ display: flex; gap: 10px; margin-bottom: 20px; border-bottom: 2px solid #e5e7eb; padding-bottom: 12px; }}
 @media (max-width: 420px) {{
   .tab-row {{ gap: 8px; }}
   #tab-upload, #tab-manual {{ flex: 1; text-align: center; padding: 9px 6px !important; font-size: 0.85em !important; }}
 }}
 
-/* Stat cards */
 .stat-card {{
   background: white;
   border-radius: 12px;
@@ -141,14 +128,11 @@ body {{ margin: 0; padding: 0; -webkit-text-size-adjust: 100%; overflow-x: hidde
   .stat-icon {{ font-size: 1.8em !important; }}
 }}
 
-/* DataTable: scroll on mobile */
 .dash-spreadsheet-container {{ overflow-x: auto !important; -webkit-overflow-scrolling: touch; }}
 .dash-cell div              {{ white-space: nowrap !important; }}
 
-/* DatePicker width */
 .DateInput, .DateInput_input, .SingleDatePickerInput {{ width: 100% !important; }}
 
-/* Upload zone */
 #upload-data {{ width: 100%; box-sizing: border-box; }}
 @media (max-width: 500px) {{
   #upload-data {{ height: 110px !important; }}
@@ -157,7 +141,6 @@ body {{ margin: 0; padding: 0; -webkit-text-size-adjust: 100%; overflow-x: hidde
   .upl-sub     {{ font-size: 0.78em !important; }}
 }}
 
-/* Table header */
 .tbl-hdr {{ display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px; margin-bottom: 12px; }}
 @media (max-width: 420px) {{ .tbl-hdr {{ flex-direction: column; align-items: flex-start; }} }}
 </style>
@@ -165,7 +148,7 @@ body {{ margin: 0; padding: 0; -webkit-text-size-adjust: 100%; overflow-x: hidde
 
 app.index_string = (
     '<!DOCTYPE html>\n<html>\n  <head>\n'
-    '    {%metas%}\n    <title>Sales Analytics</title>\n'
+    '    {%metas%}\n    <title>Sales Dashboard</title>\n'
     '    {%favicon%}\n    {%css%}\n'
     + CSS +
     '  </head>\n  <body>\n    {%app_entry%}\n'
@@ -173,10 +156,8 @@ app.index_string = (
     '  </body>\n</html>'
 )
 
-# ── Data helpers ───────────────────────────────────────────────────────────────
 
 def clean_col_names(df):
-    """Remove \\r\\n and spaces from column names; prevents _X000D_ phantom columns."""
     df.columns = df.columns.str.replace(r'[\r\n]', '', regex=True).str.strip().str.lower()
     return df
 
@@ -208,7 +189,6 @@ SEED_DATA = build_seed_data()
 
 
 def records_to_df(records):
-    """JSON records → clean DataFrame with exactly [date, product, sales]."""
     if not records:
         return pd.DataFrame(columns=['date', 'product', 'sales'])
     df = pd.DataFrame(records)
@@ -268,7 +248,6 @@ def empty_fig():
     )
     return fig
 
-# ── Shared inline styles ───────────────────────────────────────────────────────
 
 BTN_BASE = {
     'border': 'none', 'borderRadius': '8px', 'cursor': 'pointer',
@@ -302,7 +281,6 @@ def stat_card(title, value, icon, color):
                  ]),
     ])
 
-# ── Layout ────────────────────────────────────────────────────────────────────
 
 app.layout = html.Div(
     style={'backgroundColor': COLORS['light'], 'minHeight': '100vh',
@@ -311,7 +289,6 @@ app.layout = html.Div(
 
         dcc.Store(id='stored-data', storage_type='local', data=SEED_DATA),
 
-        # Header
         html.Div(id='app-header', style={
             'background': f'linear-gradient(135deg, {COLORS["primary"]} 0%, {COLORS["secondary"]} 100%)',
             'color': 'white', 'boxShadow': '0 4px 14px rgba(102,126,234,0.3)',
@@ -326,10 +303,8 @@ app.layout = html.Div(
 
         html.Div(id='main-container', children=[
 
-            # ── Input card ────────────────────────────────────────────────────
             html.Div(className='input-card', children=[
 
-                # Tabs
                 html.Div(className='tab-row', children=[
                     html.Button('\U0001f4e4 Upload File', id='tab-upload', n_clicks=1,
                                 style={**BTN_BASE, 'padding': '10px 20px',
@@ -340,7 +315,6 @@ app.layout = html.Div(
                                        'backgroundColor': 'white', 'color': COLORS['primary']}),
                 ]),
 
-                # Upload panel
                 html.Div(id='upload-section', children=[
                     html.H3('\U0001f4e4 Upload Your Data',
                             style={'color': COLORS['dark'], 'fontSize': '1.2em', 'margin': '0 0 14px'}),
@@ -362,7 +336,6 @@ app.layout = html.Div(
                                ])),
                 ]),
 
-                # Manual panel
                 html.Div(id='manual-section', style={'display': 'none'}, children=[
                     html.H3('\u270f\ufe0f Enter Sales Data',
                             style={'color': COLORS['dark'], 'fontSize': '1.2em', 'margin': '0 0 14px'}),
@@ -401,10 +374,8 @@ app.layout = html.Div(
                                 'textAlign': 'center', 'fontSize': '0.9em', 'display': 'none'}),
             ]),
 
-            # ── Stats ─────────────────────────────────────────────────────────
             html.Div(id='stats-cards'),
 
-            # ── Charts ────────────────────────────────────────────────────────
             html.Div(id='charts-row', children=[
 
                 html.Div(className='chart-card', children=[
@@ -412,7 +383,6 @@ app.layout = html.Div(
                             style={'color': COLORS['dark'], 'margin': '0 0 2px', 'fontSize': '1.1em'}),
                     html.P('Daily totals \u2014 all products',
                            style={'color': '#9ca3af', 'fontSize': '0.78em', 'margin': '0 0 12px'}),
-                    # Wrapper div with explicit height — Plotly sizes itself to fill this
                     html.Div(className='graph-wrap', children=[
                         dcc.Graph(id='sales-line-chart',
                                   style={'height': '100%'},
@@ -433,12 +403,10 @@ app.layout = html.Div(
                 ]),
             ]),
 
-            # ── Data table ────────────────────────────────────────────────────
             html.Div(id='data-table-container',
                      style={'background': 'white', 'borderRadius': '14px', 'padding': '22px',
                             'boxShadow': '0 2px 10px rgba(0,0,0,0.07)', 'marginBottom': '24px'}),
 
-            # Footer
             html.Div(style={'textAlign': 'center', 'padding': '10px 0 24px',
                             'color': '#9ca3af', 'fontSize': '0.82em'},
                      children=[html.Ul(
@@ -450,7 +418,6 @@ app.layout = html.Div(
     ],
 )
 
-# ── Callbacks ──────────────────────────────────────────────────────────────────
 
 @app.callback(
     [Output('upload-section', 'style'),
@@ -516,7 +483,7 @@ def manage_data(add_clicks, clear_clicks, upload_contents,
 
     if trigger == 'add-data-btn':
         if not date or not product or not str(product).strip() or sales is None:
-            sty, msg = err(f'\u274c Fill in all fields (Date, Product, Sales).')
+            sty, msg = err('\u274c Fill in all fields (Date, Product, Sales).')
             return current_data, msg, sty, product, sales
         v = float(sales)
         if v < 0:
@@ -552,27 +519,25 @@ def manage_data(add_clicks, clear_clicks, upload_contents,
 def update_dashboard(stored_data):
     data = records_to_df(stored_data)
 
-    # ── Stats ──
     if data.empty:
-        stats = [html.Div('📭 No data yet — upload a file or enter records manually.',
+        stats = [html.Div('\U0001f4ed No data yet \u2014 upload a file or enter records manually.',
                           style={'color': '#6b7280', 'padding': '18px', 'textAlign': 'center',
                                  'gridColumn': '1 / -1', 'background': 'white',
                                  'borderRadius': '12px', 'boxShadow': '0 2px 8px rgba(0,0,0,0.07)'})]
     else:
         s = data['sales'].dropna()
         stats = [
-            stat_card('Total Sales',  fmt_cedi(s.sum()),           '\U0001f4b0', COLORS['success']),
-            stat_card('Average Sale', fmt_cedi(s.mean()),           '\U0001f4ca', COLORS['primary']),
+            stat_card('Total Sales',  fmt_cedi(s.sum()),            '\U0001f4b0', COLORS['success']),
+            stat_card('Average Sale', fmt_cedi(s.mean()),            '\U0001f4ca', COLORS['primary']),
             stat_card('Products',     str(data['product'].nunique()),'\U0001f3f7\ufe0f', COLORS['warning']),
             stat_card('Records',      str(len(data)),                '\U0001f4dd', COLORS['secondary']),
         ]
 
-    # ── Line chart ──
     if data.empty:
         line_fig = empty_fig()
     else:
         clean = data.dropna(subset=['date', 'sales']).copy()
-        clean['_d'] = clean['date'].dt.normalize()  # snap to midnight → no time artifacts
+        clean['_d'] = clean['date'].dt.normalize()
         daily = (clean.groupby('_d', as_index=False)['sales']
                       .sum()
                       .rename(columns={'_d': 'date'})
@@ -587,7 +552,7 @@ def update_dashboard(stored_data):
                 mode='lines+markers',
                 marker=dict(size=5, color=COLORS['primary'], line=dict(width=2, color='white')),
                 fill='tozeroy', fillcolor='rgba(102,126,234,0.1)',
-                hovertemplate=f'%{{x|%b %d}}<br><b>{CEDI}%{{y:,.0f}}</b><extra></extra>',
+                hovertemplate=f'%{{x|%b %d}}<br>{CEDI}%{{y:,.0f}}',
             )
             line_fig.update_layout(
                 plot_bgcolor='white', paper_bgcolor='white',
@@ -606,7 +571,6 @@ def update_dashboard(stored_data):
                 ),
             )
 
-    # ── Bar chart ──
     if data.empty:
         bar_fig = empty_fig()
     else:
@@ -623,7 +587,7 @@ def update_dashboard(stored_data):
                              color='sales',
                              color_continuous_scale=[[0, COLORS['primary']], [1, COLORS['secondary']]])
             bar_fig.update_traces(
-                hovertemplate=f'%{{x}}<br><b>{CEDI}%{{y:,.0f}}</b><extra></extra>',
+                hovertemplate=f'%{{x}}<br>{CEDI}%{{y:,.0f}}',
             )
             bar_fig.update_layout(
                 plot_bgcolor='white', paper_bgcolor='white',
@@ -643,9 +607,8 @@ def update_dashboard(stored_data):
                 ),
             )
 
-    # ── Table ──
     if data.empty:
-        tbl = html.Div('📭 No data to display.',
+        tbl = html.Div('\U0001f4ed No data to display.',
                        style={'color': '#6b7280', 'textAlign': 'center', 'padding': '20px'})
     else:
         disp = data.sort_values('date', ascending=False).copy()
