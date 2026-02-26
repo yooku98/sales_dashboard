@@ -9,7 +9,6 @@ import plotly.graph_objects as go
 from datetime import datetime
 
 # ── Ghana Cedi symbol ─────────────────────────────────────────────────────────
-
 CEDI = '\u20b5'   # ₵
 
 app = Dash(
@@ -26,24 +25,21 @@ server = app.server
 # ── Color scheme ──────────────────────────────────────────────────────────────
 
 COLORS = {
-    'primary':   ' #667eea',
-    'secondary': ' #764ba2',
-    'success':   ' #10b981',
-    'warning':   ' #f59e0b',
-    'danger':    ' #ef4444',
-    'light':     ' #f3f4f6',
-    'dark':      ' #1f2937',
-    'white':     ' #ffffff',
+    'primary':   '#667eea',
+    'secondary': '#764ba2',
+    'success':   '#10b981',
+    'warning':   '#f59e0b',
+    'danger':    '#ef4444',
+    'light':     '#f3f4f6',
+    'dark':      '#1f2937',
+    'white':     '#ffffff',
 }
 
 # ── Responsive CSS ─────────────────────────────────────────────────────────────
-
-# Dash inline styles don’t support media queries, so we inject CSS via
-
+# Dash inline styles don't support media queries, so we inject CSS via
 # app.index_string to handle all mobile breakpoints in one place.
 
-MOBILE_CSS = “””
-
+MOBILE_CSS = """
 <style>
   *, *::before, *::after { box-sizing: border-box; }
   body { margin: 0; padding: 0; -webkit-text-size-adjust: 100%; overflow-x: hidden; }
@@ -134,141 +130,145 @@ MOBILE_CSS = “””
     #table-header-row { flex-direction: column; align-items: flex-start !important; gap: 6px; }
   }
 </style>
-
-“””
+"""
 
 app.index_string = (
-    ‘<!DOCTYPE html>\n<html>\n  <head>\n’
-    ’    {%metas%}\n    <title>Sales Analytics</title>\n’
-    ’    {%favicon%}\n    {%css%}\n’
+    '<!DOCTYPE html>\n<html>\n  <head>\n'
+    '    {%metas%}\n    <title>Sales Analytics</title>\n'
+    '    {%favicon%}\n    {%css%}\n'
     + MOBILE_CSS +
-    ’  </head>\n  <body>\n    {%app_entry%}\n’
-    ’    <footer>{%config%}{%scripts%}{%renderer%}</footer>\n’
-    ’  </body>\n</html>’
+    '  </head>\n  <body>\n    {%app_entry%}\n'
+    '    <footer>{%config%}{%scripts%}{%renderer%}</footer>\n'
+    '  </body>\n</html>'
 )
 
 # ── Sample / seed data (first-ever visit only) ─────────────────────────────────
 
 def build_seed_data():
     df = pd.DataFrame({
-        ‘date’:    pd.date_range(‘2024-01-01’, periods=10, freq=‘D’).strftime(’%Y-%m-%d’).tolist(),
-        ‘product’: [‘Product A’, ‘Product B’, ‘Product C’] * 3 + [‘Product A’],
-        ‘sales’:   [100, 150, 200, 120, 180, 220, 140, 190, 230, 160],
+        'date':    pd.date_range('2024-01-01', periods=10, freq='D').strftime('%Y-%m-%d').tolist(),
+        'product': ['Product A', 'Product B', 'Product C'] * 3 + ['Product A'],
+        'sales':   [100, 150, 200, 120, 180, 220, 140, 190, 230, 160],
     })
-    for path, reader in [(‘data/sales.csv’, pd.read_csv), (‘data/sales.xlsx’, pd.read_excel)]:
+    for path, reader in [('data/sales.csv', pd.read_csv), ('data/sales.xlsx', pd.read_excel)]:
         if os.path.exists(path):
             try:
                 d = reader(path)
                 d.columns = d.columns.str.strip().str.lower()
-                for col in [‘date’, ‘product’, ‘sales’]:
+                for col in ['date', 'product', 'sales']:
                     if col not in d.columns:
                         d[col] = None
-                d = d.dropna(how=‘all’)
-                d[‘sales’] = pd.to_numeric(d[‘sales’], errors=‘coerce’)
-                d[‘date’]  = pd.to_datetime(d[‘date’], errors=‘coerce’).dt.strftime(’%Y-%m-%d’)
-                return d.dropna(subset=[‘sales’]).to_dict(‘records’)
+                d = d.dropna(how='all')
+                d['sales'] = pd.to_numeric(d['sales'], errors='coerce')
+                d['date']  = pd.to_datetime(d['date'], errors='coerce').dt.strftime('%Y-%m-%d')
+                return d.dropna(subset=['sales']).to_dict('records')
             except Exception:
                 pass
-    return df.to_dict(‘records’)
+    return df.to_dict('records')
+
 
 SEED_DATA = build_seed_data()
 
 # ── Data helpers ───────────────────────────────────────────────────────────────
 
 def records_to_df(records):
-    “”“Convert stored JSON records to a clean, type-safe DataFrame.”””
+    """Convert stored JSON records to a clean, type-safe DataFrame."""
     if not records:
-        return pd.DataFrame(columns=[‘date’, ‘product’, ‘sales’])
+        return pd.DataFrame(columns=['date', 'product', 'sales'])
     df = pd.DataFrame(records)
-    for col in [‘date’, ‘product’, ‘sales’]:
+    for col in ['date', 'product', 'sales']:
         if col not in df.columns:
             df[col] = None
-    df[‘sales’] = pd.to_numeric(df[‘sales’], errors=‘coerce’)
-    df[‘date’]  = pd.to_datetime(df[‘date’],  errors=‘coerce’)
-    df = df.dropna(subset=[‘sales’])
-    df = df[df[‘product’].notna() & (df[‘product’].astype(str).str.strip() != ‘’)]
+    df['sales'] = pd.to_numeric(df['sales'], errors='coerce')
+    df['date']  = pd.to_datetime(df['date'],  errors='coerce')
+    df = df.dropna(subset=['sales'])
+    df = df[df['product'].notna() & (df['product'].astype(str).str.strip() != '')]
     return df.reset_index(drop=True)
 
+
 def parse_uploaded_file(contents, filename):
-    “”“Parse base64-encoded CSV or Excel upload. Returns DataFrame or None.”””
+    """Parse base64-encoded CSV or Excel upload. Returns DataFrame or None."""
     if not contents or not filename:
         return None
     try:
-        _ct, b64 = contents.split(’,’, 1)
+        _ct, b64 = contents.split(',', 1)
         decoded  = base64.b64decode(b64)
-        if filename.lower().endswith(’.csv’):
-            raw = pd.read_csv(io.StringIO(decoded.decode(‘utf-8’, errors=‘ignore’)), skip_blank_lines=True)
-        elif filename.lower().endswith((’.xlsx’, ‘.xls’)):
+        if filename.lower().endswith('.csv'):
+            raw = pd.read_csv(io.StringIO(decoded.decode('utf-8', errors='ignore')), skip_blank_lines=True)
+        elif filename.lower().endswith(('.xlsx', '.xls')):
             raw = pd.read_excel(io.BytesIO(decoded))
         else:
             return None
         raw.columns = raw.columns.str.strip().str.lower()
-        for col in [‘date’, ‘product’, ‘sales’]:
+        for col in ['date', 'product', 'sales']:
             if col not in raw.columns:
                 raw[col] = None
-        raw = raw.dropna(how=‘all’)
-        raw[‘sales’] = pd.to_numeric(raw[‘sales’], errors=‘coerce’)
-        raw[‘date’]  = pd.to_datetime(raw[‘date’], errors=‘coerce’).dt.strftime(’%Y-%m-%d’)
-        return raw.dropna(subset=[‘sales’])
+        raw = raw.dropna(how='all')
+        raw['sales'] = pd.to_numeric(raw['sales'], errors='coerce')
+        raw['date']  = pd.to_datetime(raw['date'], errors='coerce').dt.strftime('%Y-%m-%d')
+        return raw.dropna(subset=['sales'])
     except Exception as e:
-        print(f’[parse_uploaded_file] {e}’)
+        print(f'[parse_uploaded_file] {e}')
         return None
 
-def fmt_cedi(value):
-    “”“Format a number as Ghana Cedis: ₵1,234.”””
-    return f’{CEDI}{value:,.0f}’
 
-def empty_figure(msg=‘No data available<br>Upload a file or enter data manually’):
+def fmt_cedi(value):
+    """Format a number as Ghana Cedis: ₵1,234."""
+    return f'{CEDI}{value:,.0f}'
+
+
+def empty_figure(msg='No data available<br>Upload a file or enter data manually'):
     fig = go.Figure()
-    fig.add_annotation(text=msg, showarrow=False, font=dict(size=13, color=’#6b7280’),
-                        xref=‘paper’, yref=‘paper’, x=0.5, y=0.5)
-    fig.update_layout(plot_bgcolor=‘white’, paper_bgcolor=‘white’,
-                        autosize=True, height=260,
-                        margin=dict(l=10, r=10, t=10, b=10),
-                        xaxis=dict(visible=False), yaxis=dict(visible=False))
+    fig.add_annotation(text=msg, showarrow=False, font=dict(size=13, color='#6b7280'),
+                       xref='paper', yref='paper', x=0.5, y=0.5)
+    fig.update_layout(plot_bgcolor='white', paper_bgcolor='white',
+                      autosize=True, height=260,
+                      margin=dict(l=10, r=10, t=10, b=10),
+                      xaxis=dict(visible=False), yaxis=dict(visible=False))
     return fig
 
 # ── Shared style constants ─────────────────────────────────────────────────────
 
 INPUT_STYLE = {
-    ‘width’: ‘100%’, ‘padding’: ‘10px 12px’,
-    ‘border’: ‘2px solid #e5e7eb’, ‘borderRadius’: ‘8px’,
-    ‘fontSize’: ‘1em’, ‘boxSizing’: ‘border-box’, ‘outline’: ‘none’,
-    ‘transition’: ‘border-color 0.2s’,
+    'width': '100%', 'padding': '10px 12px',
+    'border': '2px solid #e5e7eb', 'borderRadius': '8px',
+    'fontSize': '1em', 'boxSizing': 'border-box', 'outline': 'none',
+    'transition': 'border-color 0.2s',
 }
 LABEL_STYLE = {
-    ‘display’: ‘block’, ‘marginBottom’: ‘6px’,
-    ‘fontWeight’: ‘600’, ‘color’: COLORS[‘dark’], ‘fontSize’: ‘0.9em’,
+    'display': 'block', 'marginBottom': '6px',
+    'fontWeight': '600', 'color': COLORS['dark'], 'fontSize': '0.9em',
 }
 CARD_STYLE = {
-    ‘backgroundColor’: COLORS[‘white’], ‘borderRadius’: ‘14px’,
-    ‘padding’: ‘22px’, ‘boxShadow’: ‘0 2px 10px rgba(0,0,0,0.07)’,
+    'backgroundColor': COLORS['white'], 'borderRadius': '14px',
+    'padding': '22px', 'boxShadow': '0 2px 10px rgba(0,0,0,0.07)',
 }
+
 
 def create_stat_card(title, value, icon, color):
     return html.Div(
-        className=‘dash-card’,
+        className='dash-card',
         style={
-            ‘backgroundColor’: COLORS[‘white’], ‘borderRadius’: ‘12px’,
-            ‘padding’: ‘18px’, ‘boxShadow’: ‘0 2px 8px rgba(0,0,0,0.07)’,
-            ‘borderLeft’: f’4px solid {color}’,
+            'backgroundColor': COLORS['white'], 'borderRadius': '12px',
+            'padding': '18px', 'boxShadow': '0 2px 8px rgba(0,0,0,0.07)',
+            'borderLeft': f'4px solid {color}',
         },
         children=[html.Div(
-            style={‘display’: ‘flex’, ‘justifyContent’: ‘space-between’, ‘alignItems’: ‘center’},
+            style={'display': 'flex', 'justifyContent': 'space-between', 'alignItems': 'center'},
             children=[
                 html.Div([
                     html.Div(title,
-                            style={‘color’: ‘#6b7280’, ‘fontSize’: ‘0.78em’, ‘marginBottom’: ‘5px’,
-                            ‘fontWeight’: ‘500’, ‘textTransform’: ‘uppercase’,
-                            ‘letterSpacing’: ‘0.04em’}),
+                             style={'color': '#6b7280', 'fontSize': '0.78em', 'marginBottom': '5px',
+                                    'fontWeight': '500', 'textTransform': 'uppercase',
+                                    'letterSpacing': '0.04em'}),
                     html.Div(value,
-                            className=‘stat-value’,
-                            style={‘color’: COLORS[‘dark’], ‘fontSize’: ‘1.55em’,
-                            ‘fontWeight’: ‘700’, ‘lineHeight’: ‘1.15’,
-                            ‘wordBreak’: ‘break-all’}),
+                             className='stat-value',
+                             style={'color': COLORS['dark'], 'fontSize': '1.55em',
+                                    'fontWeight': '700', 'lineHeight': '1.15',
+                                    'wordBreak': 'break-all'}),
                 ]),
-                html.Div(icon, className=‘stat-icon’,
-                            style={‘fontSize’: ‘2.1em’, ‘opacity’: ‘0.22’, ‘flexShrink’: ‘0’}),
+                html.Div(icon, className='stat-icon',
+                         style={'fontSize': '2.1em', 'opacity': '0.22', 'flexShrink': '0'}),
             ],
         )],
     )
@@ -277,11 +277,11 @@ def create_stat_card(title, value, icon, color):
 
 app.layout = html.Div(
     style={
-        ‘backgroundColor’: COLORS[‘light’],
-        ‘minHeight’: ‘100vh’,
-        ‘margin’: ‘0’,
-        ‘overflowX’: ‘hidden’,
-        ‘fontFamily’: “‘Segoe UI’, Tahoma, Geneva, Verdana, sans-serif”,
+        'backgroundColor': COLORS['light'],
+        'minHeight': '100vh',
+        'margin': '0',
+        'overflowX': 'hidden',
+        'fontFamily': "'Segoe UI', Tahoma, Geneva, Verdana, sans-serif",
     },
     children=[
 
@@ -494,14 +494,13 @@ app.layout = html.Div(
                            'color': '#9ca3af', 'fontSize': '0.83em'},
                     children=[html.Ul(
                         html.Li(html.A('William Thompson', href='https://yooku98.github.io/web',
-                                   style={'color': COLORS['primary']})),
+                                       style={'color': COLORS['primary']})),
                         style={'listStyle': 'none', 'padding': 0, 'margin': 0},
                     )],
                 ),
             ],
         ),
-    ),
-],
+    ],
 )
 
 # ── Callbacks ──────────────────────────────────────────────────────────────────
@@ -509,46 +508,47 @@ app.layout = html.Div(
 # 1. Tab switching
 
 @app.callback(
-    [Output(‘upload-section’, ‘style’),
-    Output(‘manual-section’, ‘style’),
-    Output(‘tab-upload’, ‘style’),
-    Output(‘tab-manual’, ‘style’)],
-    [Input(‘tab-upload’, ‘n_clicks’),
-    Input(‘tab-manual’, ‘n_clicks’)],
+    [Output('upload-section', 'style'),
+     Output('manual-section', 'style'),
+     Output('tab-upload', 'style'),
+     Output('tab-manual', 'style')],
+    [Input('tab-upload', 'n_clicks'),
+     Input('tab-manual', 'n_clicks')],
 )
 def switch_tabs(_u, _m):
-    show_upload = ctx.triggered_id != ‘tab-manual’
-    base = {‘padding’: ‘10px 20px’, ‘borderRadius’: ‘8px’, ‘cursor’: ‘pointer’,
-            ‘fontSize’: ‘0.95em’, ‘fontWeight’: ‘600’,
-            ‘transition’: ‘all 0.2s’, ‘touchAction’: ‘manipulation’}
-    active   = {**base, ‘border’: ‘none’,
-            ‘backgroundColor’: COLORS[‘primary’], ‘color’: ‘white’}
-    inactive = {**base, ‘border’: f’2px solid {COLORS[“primary”]}’,
-            ‘backgroundColor’: ‘white’, ‘color’: COLORS[‘primary’]}
+    show_upload = ctx.triggered_id != 'tab-manual'
+    base = {'padding': '10px 20px', 'borderRadius': '8px', 'cursor': 'pointer',
+             'fontSize': '0.95em', 'fontWeight': '600',
+             'transition': 'all 0.2s', 'touchAction': 'manipulation'}
+    active   = {**base, 'border': 'none',
+                 'backgroundColor': COLORS['primary'], 'color': 'white'}
+    inactive = {**base, 'border': f'2px solid {COLORS["primary"]}',
+                'backgroundColor': 'white', 'color': COLORS['primary']}
     if show_upload:
-        return {‘display’: ‘block’}, {‘display’: ‘none’}, active, inactive
-    return {‘display’: ‘none’}, {‘display’: ‘block’}, inactive, active
+        return {'display': 'block'}, {'display': 'none'}, active, inactive
+    return {'display': 'none'}, {'display': 'block'}, inactive, active
+
 
 # 2. Data management
 
 @app.callback(
-    [Output(‘stored-data’,    ‘data’),
-    Output(‘status-message’, ‘children’),
-    Output(‘status-message’, ‘style’),
-    Output(‘input-product’,  ‘value’),
-    Output(‘input-sales’,    ‘value’)],
-    [Input(‘add-data-btn’,   ‘n_clicks’),
-    Input(‘clear-data-btn’, ‘n_clicks’),
-    Input(‘upload-data’,    ‘contents’)],
-    [State(‘input-date’,    ‘date’),
-    State(‘input-product’, ‘value’),
-    State(‘input-sales’,   ‘value’),
-    State(‘stored-data’,   ‘data’),
-    State(‘upload-data’,   ‘filename’)],
+    [Output('stored-data',    'data'),
+     Output('status-message', 'children'),
+     Output('status-message', 'style'),
+     Output('input-product',  'value'),
+     Output('input-sales',    'value')],
+    [Input('add-data-btn',   'n_clicks'),
+     Input('clear-data-btn', 'n_clicks'),
+     Input('upload-data',    'contents')],
+    [State('input-date',    'date'),
+     State('input-product', 'value'),
+     State('input-sales',   'value'),
+     State('stored-data',   'data'),
+     State('upload-data',   'filename')],
     prevent_initial_call=True,  # never fires on load → localStorage is preserved
 )
 def manage_data(add_clicks, clear_clicks, upload_contents,
-date, product, sales, current_data, filename):
+                date, product, sales, current_data, filename):
 
     trigger = ctx.triggered_id
 
@@ -608,17 +608,18 @@ date, product, sales, current_data, filename):
 
     raise PreventUpdate
 
+
 # 3. Dashboard rendering
 
 @app.callback(
-    [Output(‘sales-line-chart’,     ‘figure’),
-    Output(‘product-bar-chart’,    ‘figure’),
-    Output(‘stats-cards’,          ‘children’),
-    Output(‘data-table-container’, ‘children’)],
-    Input(‘stored-data’, ‘data’),
+    [Output('sales-line-chart',     'figure'),
+     Output('product-bar-chart',    'figure'),
+     Output('stats-cards',          'children'),
+     Output('data-table-container', 'children')],
+    Input('stored-data', 'data'),
 )
 def update_dashboard(stored_data):
-    “”“Fires on page load (reads localStorage) and on every data change.”””
+    """Fires on page load (reads localStorage) and on every data change."""
 
     data = records_to_df(stored_data)
 
@@ -644,14 +645,14 @@ def update_dashboard(stored_data):
         line_fig = empty_figure()
     else:
         daily = (data.dropna(subset=['date', 'sales'])
-                 .groupby('date', as_index=False)['sales']
-                 .sum()
-                 .sort_values('date'))
+                     .groupby('date', as_index=False)['sales']
+                     .sum()
+                     .sort_values('date'))
         if daily.empty:
             line_fig = empty_figure('No dated sales data to display')
         else:
             line_fig = px.line(daily, x='date', y='sales',
-                           labels={'date': 'Date', 'sales': f'Sales ({CEDI})'})
+                               labels={'date': 'Date', 'sales': f'Sales ({CEDI})'})
             line_fig.update_traces(
                 line_color=COLORS['primary'], line_width=2.5,
                 mode='lines+markers',
@@ -665,9 +666,9 @@ def update_dashboard(stored_data):
                 margin=dict(l=8, r=8, t=6, b=6),
                 hovermode='x unified',
                 xaxis=dict(showgrid=False, showline=True, linecolor='#e5e7eb',
-                       tickfont=dict(size=10), fixedrange=True),
+                           tickfont=dict(size=10), fixedrange=True),
                 yaxis=dict(showgrid=True, gridcolor='#f3f4f6', showline=False,
-                       tickprefix=CEDI, tickfont=dict(size=10), fixedrange=True),
+                           tickprefix=CEDI, tickfont=dict(size=10), fixedrange=True),
             )
 
     # Bar chart — totals per product
@@ -675,17 +676,17 @@ def update_dashboard(stored_data):
         bar_fig = empty_figure()
     else:
         ps = (data.dropna(subset=['product', 'sales'])
-              .groupby('product', as_index=False)['sales']
-              .sum()
-              .sort_values('sales', ascending=False)
-              .head(10))
+                  .groupby('product', as_index=False)['sales']
+                  .sum()
+                  .sort_values('sales', ascending=False)
+                  .head(10))
         if ps.empty:
             bar_fig = empty_figure('No valid product / sales data')
         else:
             bar_fig = px.bar(ps, x='product', y='sales',
-                         labels={'product': 'Product', 'sales': f'Sales ({CEDI})'},
-                         color='sales',
-                         color_continuous_scale=[[0, COLORS['primary']], [1, COLORS['secondary']]])
+                             labels={'product': 'Product', 'sales': f'Sales ({CEDI})'},
+                             color='sales',
+                             color_continuous_scale=[[0, COLORS['primary']], [1, COLORS['secondary']]])
             bar_fig.update_traces(
                 hovertemplate=f'%{{x}}<br><b>{CEDI}%{{y:,.0f}}</b><extra></extra>',
             )
@@ -695,11 +696,11 @@ def update_dashboard(stored_data):
                 margin=dict(l=8, r=8, t=6, b=6),
                 coloraxis_showscale=False,
                 xaxis=dict(showgrid=False, showline=True, linecolor='#e5e7eb',
-                       categoryorder='total descending',
-                       tickfont=dict(size=10), fixedrange=True,
-                       tickangle=-30),   # angled labels prevent overlap on small screens
+                           categoryorder='total descending',
+                           tickfont=dict(size=10), fixedrange=True,
+                           tickangle=-30),   # angled labels prevent overlap on small screens
                 yaxis=dict(showgrid=True, gridcolor='#f3f4f6', showline=False,
-                       tickprefix=CEDI, tickfont=dict(size=10), fixedrange=True),
+                           tickprefix=CEDI, tickfont=dict(size=10), fixedrange=True),
             )
 
     # Data table
@@ -726,9 +727,9 @@ def update_dashboard(stored_data):
                     html.H3('\U0001f4cb All Sales Data',
                             style={'color': COLORS['dark'], 'margin': '0', 'fontSize': '1.1em'}),
                     html.Span(f'{len(data)} records',
-                          style={'backgroundColor': COLORS['primary'], 'color': 'white',
-                                 'padding': '3px 12px', 'borderRadius': '20px',
-                                 'fontSize': '0.8em', 'fontWeight': '600'}),
+                              style={'backgroundColor': COLORS['primary'], 'color': 'white',
+                                     'padding': '3px 12px', 'borderRadius': '20px',
+                                     'fontSize': '0.8em', 'fontWeight': '600'}),
                 ],
             ),
             dash_table.DataTable(
@@ -763,5 +764,6 @@ def update_dashboard(stored_data):
 
     return line_fig, bar_fig, stats_cards, table_content
 
-if **name** == ‘**main**’:
+
+if __name__ == '__main__':
     app.run_server(debug=True)
