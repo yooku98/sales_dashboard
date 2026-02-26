@@ -53,32 +53,36 @@ MOBILE_CSS = """
   /* Stats grid — 4 cols desktop → 2 cols tablet/mobile */
   #stats-cards {
     display: grid;
-    grid-template-columns: repeat(4, 1fr);
+    grid-template-columns: repeat(4, minmax(0, 1fr));
     gap: 16px;
     margin-bottom: 20px;
   }
-  @media (max-width: 860px)  { #stats-cards { grid-template-columns: repeat(2, 1fr); gap: 12px; } }
+  #stats-cards > div { min-width: 0; }  /* prevent stat card overflow */
+  @media (max-width: 860px)  { #stats-cards { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; } }
   @media (max-width: 400px)  { #stats-cards { gap: 10px; } }
 
   /* Charts — side by side on desktop, stacked on mobile */
   #charts-row {
     display: grid;
-    grid-template-columns: repeat(2, 1fr);
+    grid-template-columns: repeat(2, minmax(0, 1fr));  /* minmax(0) prevents blowout */
     gap: 16px;
     margin-bottom: 20px;
   }
+  /* Each chart card must not overflow its grid cell */
+  #charts-row > div { min-width: 0; overflow: hidden; }
   @media (max-width: 780px) { #charts-row { grid-template-columns: 1fr; } }
 
   /* Manual entry form — 4-col desktop, 2-col tablet, 1-col mobile */
   #manual-form-grid {
     display: grid;
-    grid-template-columns: 1fr 1fr 1fr auto;
+    grid-template-columns: minmax(0,1fr) minmax(0,1fr) minmax(0,1fr) auto;
     gap: 14px;
     align-items: end;
     margin-bottom: 14px;
   }
-  @media (max-width: 680px) { #manual-form-grid { grid-template-columns: 1fr 1fr; } }
-  @media (max-width: 420px) { #manual-form-grid { grid-template-columns: 1fr;     } }
+  #manual-form-grid > div { min-width: 0; }
+  @media (max-width: 680px) { #manual-form-grid { grid-template-columns: minmax(0,1fr) minmax(0,1fr); } }
+  @media (max-width: 420px) { #manual-form-grid { grid-template-columns: 1fr; } }
 
   /* Full-width action buttons on small screens */
   @media (max-width: 680px) {
@@ -129,6 +133,16 @@ MOBILE_CSS = """
   @media (max-width: 440px) {
     #table-header-row { flex-direction: column; align-items: flex-start !important; gap: 6px; }
   }
+
+  /* Plotly graph containers: never overflow their card */
+  .js-plotly-plot, .plotly, .plot-container { max-width: 100% !important; }
+  .dash-graph { width: 100%; overflow: hidden; }
+
+  /* Ensure input card doesn't overflow on mobile */
+  #upload-section, #manual-section { min-width: 0; width: 100%; }
+
+  /* Prevent long product names breaking stat card layout */
+  .stat-value { overflow: hidden; text-overflow: ellipsis; }
 </style>
 """
 
@@ -144,6 +158,13 @@ app.index_string = (
 
 # ── Sample / seed data (first-ever visit only) ─────────────────────────────────
 
+
+def clean_col_names(df):
+    """Strip carriage returns and whitespace from column names; prevents _X000D_ columns."""
+    df.columns = df.columns.str.replace(r'[\r\n]', '', regex=True).str.strip().str.lower()
+    return df
+
+
 def build_seed_data():
     df = pd.DataFrame({
         'date':    pd.date_range('2024-01-01', periods=10, freq='D').strftime('%Y-%m-%d').tolist(),
@@ -154,7 +175,7 @@ def build_seed_data():
         if os.path.exists(path):
             try:
                 d = reader(path)
-                d.columns = d.columns.str.strip().str.lower()
+                d = clean_col_names(d)
                 for col in ['date', 'product', 'sales']:
                     if col not in d.columns:
                         d[col] = None
@@ -171,14 +192,19 @@ SEED_DATA = build_seed_data()
 
 # ── Data helpers ───────────────────────────────────────────────────────────────
 
+
 def records_to_df(records):
-    """Convert stored JSON records to a clean, type-safe DataFrame."""
+    """Convert stored JSON records to a clean, type-safe DataFrame.
+    Always returns exactly [date, product, sales] columns — no extras."""
     if not records:
         return pd.DataFrame(columns=['date', 'product', 'sales'])
     df = pd.DataFrame(records)
+    df = clean_col_names(df)
     for col in ['date', 'product', 'sales']:
         if col not in df.columns:
             df[col] = None
+    # Enforce only 3 core columns — drops any phantom/extra columns
+    df = df[['date', 'product', 'sales']].copy()
     df['sales'] = pd.to_numeric(df['sales'], errors='coerce')
     df['date']  = pd.to_datetime(df['date'],  errors='coerce')
     df = df.dropna(subset=['sales'])
@@ -199,10 +225,12 @@ def parse_uploaded_file(contents, filename):
             raw = pd.read_excel(io.BytesIO(decoded))
         else:
             return None
-        raw.columns = raw.columns.str.strip().str.lower()
+        raw = clean_col_names(raw)
         for col in ['date', 'product', 'sales']:
             if col not in raw.columns:
                 raw[col] = None
+        # Keep only the 3 core columns — eliminates any extra/phantom columns
+        raw = raw[['date', 'product', 'sales']].copy()
         raw = raw.dropna(how='all')
         raw['sales'] = pd.to_numeric(raw['sales'], errors='coerce')
         raw['date']  = pd.to_datetime(raw['date'], errors='coerce').dt.strftime('%Y-%m-%d')
@@ -644,10 +672,14 @@ def update_dashboard(stored_data):
     if data.empty:
         line_fig = empty_figure()
     else:
-        daily = (data.dropna(subset=['date', 'sales'])
-                     .groupby('date', as_index=False)['sales']
-                     .sum()
-                     .sort_values('date'))
+        # Group by calendar date only (not datetime timestamp) to avoid
+        # microsecond floating-point artifacts like 23:59:59.9995 on x-axis
+        clean = data.dropna(subset=['date', 'sales']).copy()
+        clean['_date_only'] = clean['date'].dt.normalize()   # midnight-snapped datetime
+        daily = (clean.groupby('_date_only', as_index=False)['sales']
+                      .sum()
+                      .rename(columns={'_date_only': 'date'})
+                      .sort_values('date'))
         if daily.empty:
             line_fig = empty_figure('No dated sales data to display')
         else:
@@ -662,13 +694,21 @@ def update_dashboard(stored_data):
             )
             line_fig.update_layout(
                 plot_bgcolor='white', paper_bgcolor='white',
-                autosize=True, height=260,
-                margin=dict(l=8, r=8, t=6, b=6),
+                autosize=True, height=280,
+                # Left margin accommodates tickprefix + numbers without clipping
+                margin=dict(l=64, r=16, t=10, b=44),
                 hovermode='x unified',
-                xaxis=dict(showgrid=False, showline=True, linecolor='#e5e7eb',
-                           tickfont=dict(size=10), fixedrange=True),
-                yaxis=dict(showgrid=True, gridcolor='#f3f4f6', showline=False,
-                           tickprefix=CEDI, tickfont=dict(size=10), fixedrange=True),
+                xaxis=dict(
+                    title=None,
+                    showgrid=False, showline=True, linecolor='#e5e7eb',
+                    tickfont=dict(size=10), fixedrange=True,
+                    tickformat='%b %d',  # 'Jan 01' — strips time component entirely
+                ),
+                yaxis=dict(
+                    title=None,
+                    showgrid=True, gridcolor='#f3f4f6', showline=False,
+                    tickprefix=CEDI, tickfont=dict(size=10), fixedrange=True,
+                ),
             )
 
     # Bar chart — totals per product
@@ -692,15 +732,21 @@ def update_dashboard(stored_data):
             )
             bar_fig.update_layout(
                 plot_bgcolor='white', paper_bgcolor='white',
-                autosize=True, height=260,
-                margin=dict(l=8, r=8, t=6, b=6),
+                autosize=True, height=280,
+                margin=dict(l=64, r=16, t=10, b=60),  # b=60 for angled labels
                 coloraxis_showscale=False,
-                xaxis=dict(showgrid=False, showline=True, linecolor='#e5e7eb',
-                           categoryorder='total descending',
-                           tickfont=dict(size=10), fixedrange=True,
-                           tickangle=-30),   # angled labels prevent overlap on small screens
-                yaxis=dict(showgrid=True, gridcolor='#f3f4f6', showline=False,
-                           tickprefix=CEDI, tickfont=dict(size=10), fixedrange=True),
+                xaxis=dict(
+                    title=None,
+                    showgrid=False, showline=True, linecolor='#e5e7eb',
+                    categoryorder='total descending',
+                    tickfont=dict(size=10), fixedrange=True,
+                    tickangle=-35,
+                ),
+                yaxis=dict(
+                    title=None,
+                    showgrid=True, gridcolor='#f3f4f6', showline=False,
+                    tickprefix=CEDI, tickfont=dict(size=10), fixedrange=True,
+                ),
             )
 
     # Data table
