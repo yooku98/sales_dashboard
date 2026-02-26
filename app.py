@@ -8,21 +8,17 @@ import plotly.express as px
 import plotly.graph_objects as go
 from datetime import datetime
 
-# ── Ghana Cedi symbol ─────────────────────────────────────────────────────────
-CEDI = '\u20b5'   # ₵
+CEDI = '\u20b5'  # ₵
 
 app = Dash(
     __name__,
     meta_tags=[
-        # Tells mobile browsers to use device width and prevent auto-zoom
-        {'name': 'viewport', 'content': 'width=device-width, initial-scale=1, maximum-scale=1'},
-        {'name': 'mobile-web-app-capable',       'content': 'yes'},
+        {'name': 'viewport', 'content': 'width=device-width, initial-scale=1'},
+        {'name': 'mobile-web-app-capable', 'content': 'yes'},
         {'name': 'apple-mobile-web-app-capable', 'content': 'yes'},
     ],
 )
 server = app.server
-
-# ── Color scheme ──────────────────────────────────────────────────────────────
 
 COLORS = {
     'primary':   '#667eea',
@@ -35,114 +31,135 @@ COLORS = {
     'white':     '#ffffff',
 }
 
-# ── Responsive CSS ─────────────────────────────────────────────────────────────
-# Dash inline styles don't support media queries, so we inject CSS via
-# app.index_string to handle all mobile breakpoints in one place.
+# Chart height used both in Python layout and CSS — single source of truth
+CHART_H = 320
 
-MOBILE_CSS = """
+CSS = f"""
 <style>
-  *, *::before, *::after { box-sizing: border-box; }
-  body { margin: 0; padding: 0; -webkit-text-size-adjust: 100%; overflow-x: hidden; }
+*, *::before, *::after {{ box-sizing: border-box; }}
+body {{ margin: 0; padding: 0; -webkit-text-size-adjust: 100%; overflow-x: hidden; }}
 
-  /* Header text */
-  @media (max-width: 600px) {
-    .dash-h1  { font-size: 1.45em !important; }
-    .dash-sub { font-size: 0.88em !important; }
-  }
+/* ── Header ── */
+#app-header {{ padding: 28px 24px; text-align: center; }}
+@media (max-width: 500px) {{
+  #app-header {{ padding: 18px 14px; }}
+  .hdr-title {{ font-size: 1.4em !important; }}
+  .hdr-sub   {{ font-size: 0.85em !important; }}
+}}
 
-  /* Stats grid — 4 cols desktop → 2 cols tablet/mobile */
-  #stats-cards {
-    display: grid;
-    grid-template-columns: repeat(4, minmax(0, 1fr));
-    gap: 16px;
-    margin-bottom: 20px;
-  }
-  #stats-cards > div { min-width: 0; }  /* prevent stat card overflow */
-  @media (max-width: 860px)  { #stats-cards { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; } }
-  @media (max-width: 400px)  { #stats-cards { gap: 10px; } }
+/* ── Main container ── */
+#main-container {{ max-width: 1400px; margin: 0 auto; padding: 0 20px; }}
+@media (max-width: 500px) {{ #main-container {{ padding: 0 12px; }} }}
 
-  /* Charts — side by side on desktop, stacked on mobile */
-  #charts-row {
-    display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));  /* minmax(0) prevents blowout */
-    gap: 16px;
-    margin-bottom: 20px;
-  }
-  /* Each chart card must not overflow its grid cell */
-  #charts-row > div { min-width: 0; overflow: hidden; }
-  @media (max-width: 780px) { #charts-row { grid-template-columns: 1fr; } }
+/* ── Stats: 4-col → 2-col ── */
+#stats-cards {{
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 14px;
+  margin-bottom: 18px;
+}}
+@media (max-width: 860px) {{ #stats-cards {{ grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }} }}
 
-  /* Manual entry form — 4-col desktop, 2-col tablet, 1-col mobile */
-  #manual-form-grid {
-    display: grid;
-    grid-template-columns: minmax(0,1fr) minmax(0,1fr) minmax(0,1fr) auto;
-    gap: 14px;
-    align-items: end;
-    margin-bottom: 14px;
-  }
-  #manual-form-grid > div { min-width: 0; }
-  @media (max-width: 680px) { #manual-form-grid { grid-template-columns: minmax(0,1fr) minmax(0,1fr); } }
-  @media (max-width: 420px) { #manual-form-grid { grid-template-columns: 1fr; } }
+/* ── Charts: 2-col → 1-col ── */
+#charts-row {{
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+  margin-bottom: 18px;
+}}
+@media (max-width: 760px) {{ #charts-row {{ grid-template-columns: 1fr; }} }}
 
-  /* Full-width action buttons on small screens */
-  @media (max-width: 680px) {
-    #add-data-btn   { width: 100%; }
-    #clear-data-btn { width: 100%; margin-top: 4px; }
-  }
+/* Chart card: DO NOT clip — let it expand to fit the graph */
+.chart-card {{
+  background: white;
+  border-radius: 14px;
+  padding: 20px 20px 12px 20px;
+  box-shadow: 0 2px 10px rgba(0,0,0,0.07);
+  min-width: 0;
+}}
 
-  /* Tab buttons fill row on very small screens */
-  @media (max-width: 420px) {
-    #tab-upload, #tab-manual {
-      flex: 1; text-align: center;
-      padding: 9px 6px !important;
-      font-size: 0.85em !important;
-    }
-  }
+/* Graph wrapper: exact height, no overflow clipping */
+.graph-wrap {{
+  width: 100%;
+  height: {CHART_H}px;
+  position: relative;
+}}
 
-  /* Stat card internal scaling */
-  @media (max-width: 600px) {
-    .stat-value { font-size: 1.4em !important; }
-    .stat-icon  { font-size: 1.9em !important; }
-    .dash-card  { padding: 14px !important; }
-  }
+/* Plotly fills wrapper exactly */
+.graph-wrap .js-plotly-plot,
+.graph-wrap .plot-container,
+.graph-wrap .svg-container {{
+  width: 100% !important;
+  height: 100% !important;
+}}
 
-  /* Main container horizontal padding */
-  #main-container { max-width: 1400px; margin: 0 auto; padding: 0 20px; }
-  @media (max-width: 480px) { #main-container { padding: 0 12px; } }
+/* ── Input card ── */
+.input-card {{
+  background: white;
+  border-radius: 14px;
+  padding: 24px;
+  box-shadow: 0 2px 10px rgba(0,0,0,0.07);
+  margin-bottom: 18px;
+}}
 
-  /* Header padding */
-  #app-header { padding: 24px 20px; }
-  @media (max-width: 480px) { #app-header { padding: 16px 14px; } }
+/* ── Manual form: 4-col → 2-col → 1-col ── */
+#manual-form-grid {{
+  display: grid;
+  grid-template-columns: minmax(0,1fr) minmax(0,1fr) minmax(0,1fr) auto;
+  gap: 14px;
+  align-items: end;
+  margin-bottom: 14px;
+}}
+#manual-form-grid > div {{ min-width: 0; }}
+@media (max-width: 680px) {{ #manual-form-grid {{ grid-template-columns: minmax(0,1fr) minmax(0,1fr); }} }}
+@media (max-width: 420px) {{ #manual-form-grid {{ grid-template-columns: 1fr; }} }}
 
-  /* Upload zone — shorter on mobile */
-  @media (max-width: 560px) {
-    #upload-data               { height: 110px !important; }
-    .upload-icon               { font-size: 2em !important; }
-    .upload-main               { font-size: 0.95em !important; }
-    .upload-sub                { font-size: 0.78em !important; }
-  }
+/* Full-width buttons on mobile */
+@media (max-width: 680px) {{
+  #add-data-btn   {{ width: 100%; }}
+  #clear-data-btn {{ width: 100%; margin-top: 6px; }}
+}}
 
-  /* DataTable: always scroll, never wrap */
-  .dash-spreadsheet-container { overflow-x: auto !important; -webkit-overflow-scrolling: touch; }
-  .dash-cell div              { white-space: nowrap !important; }
+/* Tab buttons: stretch on tiny screens */
+.tab-row {{ display: flex; gap: 10px; margin-bottom: 20px; border-bottom: 2px solid #e5e7eb; padding-bottom: 12px; }}
+@media (max-width: 420px) {{
+  .tab-row {{ gap: 8px; }}
+  #tab-upload, #tab-manual {{ flex: 1; text-align: center; padding: 9px 6px !important; font-size: 0.85em !important; }}
+}}
 
-  /* DatePicker width fix */
-  .DateInput, .DateInput_input, .SingleDatePickerInput { width: 100% !important; }
+/* Stat cards */
+.stat-card {{
+  background: white;
+  border-radius: 12px;
+  padding: 18px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.07);
+  min-width: 0;
+}}
+@media (max-width: 500px) {{
+  .stat-card {{ padding: 14px; }}
+  .stat-val  {{ font-size: 1.35em !important; }}
+  .stat-icon {{ font-size: 1.8em !important; }}
+}}
 
-  /* Table header row wraps on very small screens */
-  @media (max-width: 440px) {
-    #table-header-row { flex-direction: column; align-items: flex-start !important; gap: 6px; }
-  }
+/* DataTable: scroll on mobile */
+.dash-spreadsheet-container {{ overflow-x: auto !important; -webkit-overflow-scrolling: touch; }}
+.dash-cell div              {{ white-space: nowrap !important; }}
 
-  /* Plotly graph containers: never overflow their card */
-  .js-plotly-plot, .plotly, .plot-container { max-width: 100% !important; }
-  .dash-graph { width: 100%; overflow: hidden; }
+/* DatePicker width */
+.DateInput, .DateInput_input, .SingleDatePickerInput {{ width: 100% !important; }}
 
-  /* Ensure input card doesn't overflow on mobile */
-  #upload-section, #manual-section { min-width: 0; width: 100%; }
+/* Upload zone */
+#upload-data {{ width: 100%; box-sizing: border-box; }}
+@media (max-width: 500px) {{
+  #upload-data {{ height: 110px !important; }}
+  .upl-icon    {{ font-size: 2em !important; }}
+  .upl-main    {{ font-size: 0.95em !important; }}
+  .upl-sub     {{ font-size: 0.78em !important; }}
+}}
 
-  /* Prevent long product names breaking stat card layout */
-  .stat-value { overflow: hidden; text-overflow: ellipsis; }
+/* Table header */
+.tbl-hdr {{ display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px; margin-bottom: 12px; }}
+@media (max-width: 420px) {{ .tbl-hdr {{ flex-direction: column; align-items: flex-start; }} }}
 </style>
 """
 
@@ -150,23 +167,22 @@ app.index_string = (
     '<!DOCTYPE html>\n<html>\n  <head>\n'
     '    {%metas%}\n    <title>Sales Analytics</title>\n'
     '    {%favicon%}\n    {%css%}\n'
-    + MOBILE_CSS +
+    + CSS +
     '  </head>\n  <body>\n    {%app_entry%}\n'
     '    <footer>{%config%}{%scripts%}{%renderer%}</footer>\n'
     '  </body>\n</html>'
 )
 
-# ── Sample / seed data (first-ever visit only) ─────────────────────────────────
-
+# ── Data helpers ───────────────────────────────────────────────────────────────
 
 def clean_col_names(df):
-    """Strip carriage returns and whitespace from column names; prevents _X000D_ columns."""
+    """Remove \\r\\n and spaces from column names; prevents _X000D_ phantom columns."""
     df.columns = df.columns.str.replace(r'[\r\n]', '', regex=True).str.strip().str.lower()
     return df
 
 
 def build_seed_data():
-    df = pd.DataFrame({
+    fallback = pd.DataFrame({
         'date':    pd.date_range('2024-01-01', periods=10, freq='D').strftime('%Y-%m-%d').tolist(),
         'product': ['Product A', 'Product B', 'Product C'] * 3 + ['Product A'],
         'sales':   [100, 150, 200, 120, 180, 220, 140, 190, 230, 160],
@@ -179,23 +195,20 @@ def build_seed_data():
                 for col in ['date', 'product', 'sales']:
                     if col not in d.columns:
                         d[col] = None
-                d = d.dropna(how='all')
+                d = d[['date', 'product', 'sales']].dropna(how='all')
                 d['sales'] = pd.to_numeric(d['sales'], errors='coerce')
                 d['date']  = pd.to_datetime(d['date'], errors='coerce').dt.strftime('%Y-%m-%d')
                 return d.dropna(subset=['sales']).to_dict('records')
             except Exception:
                 pass
-    return df.to_dict('records')
+    return fallback.to_dict('records')
 
 
 SEED_DATA = build_seed_data()
 
-# ── Data helpers ───────────────────────────────────────────────────────────────
-
 
 def records_to_df(records):
-    """Convert stored JSON records to a clean, type-safe DataFrame.
-    Always returns exactly [date, product, sales] columns — no extras."""
+    """JSON records → clean DataFrame with exactly [date, product, sales]."""
     if not records:
         return pd.DataFrame(columns=['date', 'product', 'sales'])
     df = pd.DataFrame(records)
@@ -203,7 +216,6 @@ def records_to_df(records):
     for col in ['date', 'product', 'sales']:
         if col not in df.columns:
             df[col] = None
-    # Enforce only 3 core columns — drops any phantom/extra columns
     df = df[['date', 'product', 'sales']].copy()
     df['sales'] = pd.to_numeric(df['sales'], errors='coerce')
     df['date']  = pd.to_datetime(df['date'],  errors='coerce')
@@ -213,7 +225,6 @@ def records_to_df(records):
 
 
 def parse_uploaded_file(contents, filename):
-    """Parse base64-encoded CSV or Excel upload. Returns DataFrame or None."""
     if not contents or not filename:
         return None
     try:
@@ -229,7 +240,6 @@ def parse_uploaded_file(contents, filename):
         for col in ['date', 'product', 'sales']:
             if col not in raw.columns:
                 raw[col] = None
-        # Keep only the 3 core columns — eliminates any extra/phantom columns
         raw = raw[['date', 'product', 'sales']].copy()
         raw = raw.dropna(how='all')
         raw['sales'] = pd.to_numeric(raw['sales'], errors='coerce')
@@ -240,324 +250,226 @@ def parse_uploaded_file(contents, filename):
         return None
 
 
-def fmt_cedi(value):
-    """Format a number as Ghana Cedis: ₵1,234."""
-    return f'{CEDI}{value:,.0f}'
+def fmt_cedi(v):
+    return f'{CEDI}{v:,.0f}'
 
 
-def empty_figure(msg='No data available<br>Upload a file or enter data manually'):
+def empty_fig():
     fig = go.Figure()
-    fig.add_annotation(text=msg, showarrow=False, font=dict(size=13, color='#6b7280'),
-                       xref='paper', yref='paper', x=0.5, y=0.5)
-    fig.update_layout(plot_bgcolor='white', paper_bgcolor='white',
-                      autosize=True, height=260,
-                      margin=dict(l=10, r=10, t=10, b=10),
-                      xaxis=dict(visible=False), yaxis=dict(visible=False))
+    fig.add_annotation(
+        text='No data — upload a file or enter records manually',
+        showarrow=False, font=dict(size=13, color='#9ca3af'),
+        xref='paper', yref='paper', x=0.5, y=0.5,
+    )
+    fig.update_layout(
+        plot_bgcolor='white', paper_bgcolor='white',
+        height=CHART_H, margin=dict(l=0, r=0, t=0, b=0),
+        xaxis=dict(visible=False), yaxis=dict(visible=False),
+    )
     return fig
 
-# ── Shared style constants ─────────────────────────────────────────────────────
+# ── Shared inline styles ───────────────────────────────────────────────────────
 
+BTN_BASE = {
+    'border': 'none', 'borderRadius': '8px', 'cursor': 'pointer',
+    'fontSize': '0.95em', 'fontWeight': '600', 'touchAction': 'manipulation',
+    'transition': 'opacity 0.15s',
+}
 INPUT_STYLE = {
-    'width': '100%', 'padding': '10px 12px',
+    'width': '100%', 'padding': '10px 12px', 'boxSizing': 'border-box',
     'border': '2px solid #e5e7eb', 'borderRadius': '8px',
-    'fontSize': '1em', 'boxSizing': 'border-box', 'outline': 'none',
-    'transition': 'border-color 0.2s',
+    'fontSize': '1em', 'outline': 'none',
 }
-LABEL_STYLE = {
-    'display': 'block', 'marginBottom': '6px',
-    'fontWeight': '600', 'color': COLORS['dark'], 'fontSize': '0.9em',
-}
-CARD_STYLE = {
-    'backgroundColor': COLORS['white'], 'borderRadius': '14px',
-    'padding': '22px', 'boxShadow': '0 2px 10px rgba(0,0,0,0.07)',
-}
+LABEL_STYLE = {'display': 'block', 'marginBottom': '6px', 'fontWeight': '600',
+               'color': COLORS['dark'], 'fontSize': '0.9em'}
 
 
-def create_stat_card(title, value, icon, color):
-    return html.Div(
-        className='dash-card',
-        style={
-            'backgroundColor': COLORS['white'], 'borderRadius': '12px',
-            'padding': '18px', 'boxShadow': '0 2px 8px rgba(0,0,0,0.07)',
-            'borderLeft': f'4px solid {color}',
-        },
-        children=[html.Div(
-            style={'display': 'flex', 'justifyContent': 'space-between', 'alignItems': 'center'},
-            children=[
-                html.Div([
-                    html.Div(title,
-                             style={'color': '#6b7280', 'fontSize': '0.78em', 'marginBottom': '5px',
-                                    'fontWeight': '500', 'textTransform': 'uppercase',
-                                    'letterSpacing': '0.04em'}),
-                    html.Div(value,
-                             className='stat-value',
-                             style={'color': COLORS['dark'], 'fontSize': '1.55em',
-                                    'fontWeight': '700', 'lineHeight': '1.15',
-                                    'wordBreak': 'break-all'}),
-                ]),
-                html.Div(icon, className='stat-icon',
-                         style={'fontSize': '2.1em', 'opacity': '0.22', 'flexShrink': '0'}),
-            ],
-        )],
-    )
+def stat_card(title, value, icon, color):
+    return html.Div(className='stat-card', style={'borderLeft': f'4px solid {color}'}, children=[
+        html.Div(style={'display': 'flex', 'justifyContent': 'space-between', 'alignItems': 'center'},
+                 children=[
+                     html.Div([
+                         html.Div(title, style={'color': '#6b7280', 'fontSize': '0.75em',
+                                                'fontWeight': '500', 'textTransform': 'uppercase',
+                                                'letterSpacing': '0.04em', 'marginBottom': '4px'}),
+                         html.Div(value, className='stat-val',
+                                  style={'color': COLORS['dark'], 'fontSize': '1.6em',
+                                         'fontWeight': '700', 'lineHeight': '1.1',
+                                         'wordBreak': 'break-all'}),
+                     ]),
+                     html.Div(icon, className='stat-icon',
+                              style={'fontSize': '2em', 'opacity': '0.2', 'flexShrink': '0'}),
+                 ]),
+    ])
 
-# ── Layout ─────────────────────────────────────────────────────────────────────
+# ── Layout ────────────────────────────────────────────────────────────────────
 
 app.layout = html.Div(
-    style={
-        'backgroundColor': COLORS['light'],
-        'minHeight': '100vh',
-        'margin': '0',
-        'overflowX': 'hidden',
-        'fontFamily': "'Segoe UI', Tahoma, Geneva, Verdana, sans-serif",
-    },
+    style={'backgroundColor': COLORS['light'], 'minHeight': '100vh',
+           'margin': '0', 'fontFamily': "'Segoe UI', Tahoma, Geneva, Verdana, sans-serif"},
     children=[
 
-        # ── Persistent store — survives page refresh via localStorage ────────
-        # data=SEED_DATA only used on first-ever visit (empty localStorage).
         dcc.Store(id='stored-data', storage_type='local', data=SEED_DATA),
 
-        # ── Header ──────────────────────────────────────────────────────────
-        html.Div(
-            id='app-header',
-            style={
-                'background': f'linear-gradient(135deg, {COLORS["primary"]} 0%, {COLORS["secondary"]} 100%)',
-                'color': COLORS['white'],
-                'boxShadow': '0 4px 14px rgba(102,126,234,0.35)',
-                'marginBottom': '20px',
-                'textAlign': 'center',
-            },
-            children=[
-                html.H1(
-                    f'\U0001f4ca Sales Analytics Dashboard',
-                    className='dash-h1',
-                    style={'margin': '0', 'fontSize': '2em', 'fontWeight': '700'},
-                ),
-                html.P(
-                    f'Track your sales in Ghana Cedis ({CEDI}) \u2014 data saved in this browser',
-                    className='dash-sub',
-                    style={'margin': '8px 0 0 0', 'fontSize': '0.98em', 'opacity': '0.88'},
-                ),
-            ],
-        ),
+        # Header
+        html.Div(id='app-header', style={
+            'background': f'linear-gradient(135deg, {COLORS["primary"]} 0%, {COLORS["secondary"]} 100%)',
+            'color': 'white', 'boxShadow': '0 4px 14px rgba(102,126,234,0.3)',
+            'marginBottom': '18px',
+        }, children=[
+            html.H1('\U0001f4ca Sales Analytics Dashboard', className='hdr-title',
+                    style={'margin': '0', 'fontSize': '1.9em', 'fontWeight': '700'}),
+            html.P(f'Track sales in Ghana Cedis ({CEDI}) \u2014 data saved in this browser',
+                   className='hdr-sub',
+                   style={'margin': '6px 0 0', 'fontSize': '0.95em', 'opacity': '0.88'}),
+        ]),
 
-        # ── Main container ──────────────────────────────────────────────────
-        html.Div(
-            id='main-container',
-            children=[
+        html.Div(id='main-container', children=[
 
-                # ── Input card ──────────────────────────────────────────────
-                html.Div(
-                    className='dash-card',
-                    style={**CARD_STYLE, 'marginBottom': '20px'},
-                    children=[
+            # ── Input card ────────────────────────────────────────────────────
+            html.Div(className='input-card', children=[
 
-                        # Tab row
-                        html.Div(
-                            style={'display': 'flex', 'gap': '10px', 'marginBottom': '20px',
-                                   'borderBottom': '2px solid #e5e7eb', 'paddingBottom': '12px'},
-                            children=[
-                                html.Button('📤 Upload File', id='tab-upload', n_clicks=1,
-                                            style={'padding': '10px 20px', 'border': 'none',
-                                                   'borderRadius': '8px', 'cursor': 'pointer',
-                                                   'fontSize': '0.95em', 'fontWeight': '600',
-                                                   'backgroundColor': COLORS['primary'], 'color': 'white',
-                                                   'transition': 'all 0.2s', 'touchAction': 'manipulation'}),
-                                html.Button('\u270f\ufe0f Enter Manually', id='tab-manual', n_clicks=0,
-                                            style={'padding': '10px 20px',
-                                                   'border': f'2px solid {COLORS["primary"]}',
-                                                   'borderRadius': '8px', 'cursor': 'pointer',
-                                                   'fontSize': '0.95em', 'fontWeight': '600',
-                                                   'backgroundColor': 'white', 'color': COLORS['primary'],
-                                                   'transition': 'all 0.2s', 'touchAction': 'manipulation'}),
-                            ],
-                        ),
+                # Tabs
+                html.Div(className='tab-row', children=[
+                    html.Button('\U0001f4e4 Upload File', id='tab-upload', n_clicks=1,
+                                style={**BTN_BASE, 'padding': '10px 20px',
+                                       'backgroundColor': COLORS['primary'], 'color': 'white'}),
+                    html.Button('\u270f\ufe0f Enter Manually', id='tab-manual', n_clicks=0,
+                                style={**BTN_BASE, 'padding': '10px 20px',
+                                       'border': f'2px solid {COLORS["primary"]}',
+                                       'backgroundColor': 'white', 'color': COLORS['primary']}),
+                ]),
 
-                        # Upload section
-                        html.Div(id='upload-section', children=[
-                            html.H3('\U0001f4e4 Upload Your Data',
-                                    style={'color': COLORS['dark'], 'fontSize': '1.25em',
-                                           'margin': '0 0 14px 0'}),
-                            dcc.Upload(
-                                id='upload-data',
-                                children=html.Div([
-                                    html.Div('\U0001f4c1', className='upload-icon',
-                                             style={'fontSize': '2.4em', 'marginBottom': '6px'}),
-                                    html.Div('Drag and Drop or Tap to Select', className='upload-main',
-                                             style={'fontSize': '1.05em', 'fontWeight': '600'}),
-                                    html.Div('Supports CSV and Excel (.xlsx)', className='upload-sub',
-                                             style={'fontSize': '0.83em', 'color': '#6b7280', 'marginTop': '3px'}),
-                                ]),
-                                style={
-                                    'width': '100%', 'height': '130px', 'boxSizing': 'border-box',
-                                    'borderWidth': '2px', 'borderStyle': 'dashed',
-                                    'borderRadius': '10px', 'borderColor': COLORS['primary'],
-                                    'textAlign': 'center', 'backgroundColor': '#f9fafb',
-                                    'cursor': 'pointer', 'display': 'flex',
-                                    'alignItems': 'center', 'justifyContent': 'center',
-                                    'transition': 'all 0.2s',
-                                    'WebkitTapHighlightColor': 'transparent',
-                                },
-                                multiple=False,
-                            ),
+                # Upload panel
+                html.Div(id='upload-section', children=[
+                    html.H3('\U0001f4e4 Upload Your Data',
+                            style={'color': COLORS['dark'], 'fontSize': '1.2em', 'margin': '0 0 14px'}),
+                    dcc.Upload(id='upload-data', multiple=False,
+                               style={
+                                   'height': '130px', 'borderWidth': '2px', 'borderStyle': 'dashed',
+                                   'borderRadius': '10px', 'borderColor': COLORS['primary'],
+                                   'backgroundColor': '#f9fafb', 'cursor': 'pointer',
+                                   'display': 'flex', 'alignItems': 'center', 'justifyContent': 'center',
+                                   'textAlign': 'center', 'WebkitTapHighlightColor': 'transparent',
+                               },
+                               children=html.Div([
+                                   html.Div('\U0001f4c1', className='upl-icon',
+                                            style={'fontSize': '2.2em', 'marginBottom': '6px'}),
+                                   html.Div('Drag and Drop or Tap to Select', className='upl-main',
+                                            style={'fontSize': '1em', 'fontWeight': '600'}),
+                                   html.Div('CSV or Excel (.xlsx)', className='upl-sub',
+                                            style={'fontSize': '0.82em', 'color': '#6b7280', 'marginTop': '3px'}),
+                               ])),
+                ]),
+
+                # Manual panel
+                html.Div(id='manual-section', style={'display': 'none'}, children=[
+                    html.H3('\u270f\ufe0f Enter Sales Data',
+                            style={'color': COLORS['dark'], 'fontSize': '1.2em', 'margin': '0 0 14px'}),
+                    html.Div(id='manual-form-grid', children=[
+                        html.Div([
+                            html.Label('Date', style=LABEL_STYLE),
+                            dcc.DatePickerSingle(id='input-date',
+                                                 date=datetime.today().strftime('%Y-%m-%d'),
+                                                 display_format='YYYY-MM-DD',
+                                                 style={'width': '100%'}),
                         ]),
-
-                        # Manual entry section
-                        html.Div(id='manual-section', style={'display': 'none'}, children=[
-                            html.H3('\u270f\ufe0f Enter Sales Data',
-                                    style={'color': COLORS['dark'], 'fontSize': '1.25em',
-                                           'margin': '0 0 14px 0'}),
-
-                            html.Div(
-                                id='manual-form-grid',
-                                children=[
-                                    html.Div([
-                                        html.Label('Date', style=LABEL_STYLE),
-                                        dcc.DatePickerSingle(
-                                            id='input-date',
-                                            date=datetime.today().strftime('%Y-%m-%d'),
-                                            display_format='YYYY-MM-DD',
-                                            style={'width': '100%'},
-                                        ),
-                                    ]),
-                                    html.Div([
-                                        html.Label('Product', style=LABEL_STYLE),
-                                        dcc.Input(id='input-product', type='text',
-                                                  placeholder='Product name', style=INPUT_STYLE),
-                                    ]),
-                                    html.Div([
-                                        html.Label(f'Sales ({CEDI})', style=LABEL_STYLE),
-                                        dcc.Input(id='input-sales', type='number', min=0,
-                                                  placeholder='0.00', style=INPUT_STYLE),
-                                    ]),
-                                    html.Div([
-                                        # Invisible label keeps button aligned to inputs on desktop
-                                        html.Label('\u00a0', style={**LABEL_STYLE, 'visibility': 'hidden'}),
-                                        html.Button(
-                                            '\u2795 Add', id='add-data-btn', n_clicks=0,
-                                            style={
-                                                'width': '100%', 'padding': '10px 18px',
-                                                'backgroundColor': COLORS['success'],
-                                                'color': 'white', 'border': 'none',
-                                                'borderRadius': '8px', 'cursor': 'pointer',
-                                                'fontSize': '1em', 'fontWeight': '600',
-                                                'touchAction': 'manipulation',
-                                            },
-                                        ),
-                                    ]),
-                                ],
-                            ),
-
-                            html.Button(
-                                '\U0001f5d1\ufe0f Clear All Data', id='clear-data-btn', n_clicks=0,
-                                style={
-                                    'padding': '9px 18px', 'marginTop': '12px',
-                                    'backgroundColor': COLORS['danger'],
-                                    'color': 'white', 'border': 'none',
-                                    'borderRadius': '8px', 'cursor': 'pointer',
-                                    'fontSize': '0.9em', 'fontWeight': '600',
-                                    'touchAction': 'manipulation',
-                                },
-                            ),
+                        html.Div([
+                            html.Label('Product', style=LABEL_STYLE),
+                            dcc.Input(id='input-product', type='text',
+                                      placeholder='Product name', style=INPUT_STYLE),
                         ]),
+                        html.Div([
+                            html.Label(f'Sales ({CEDI})', style=LABEL_STYLE),
+                            dcc.Input(id='input-sales', type='number', min=0,
+                                      placeholder='0.00', style=INPUT_STYLE),
+                        ]),
+                        html.Div([
+                            html.Label('\u00a0', style={**LABEL_STYLE, 'visibility': 'hidden'}),
+                            html.Button('\u2795 Add', id='add-data-btn', n_clicks=0,
+                                        style={**BTN_BASE, 'width': '100%', 'padding': '10px 18px',
+                                               'backgroundColor': COLORS['success'], 'color': 'white'}),
+                        ]),
+                    ]),
+                    html.Button('\U0001f5d1\ufe0f Clear All Data', id='clear-data-btn', n_clicks=0,
+                                style={**BTN_BASE, 'padding': '9px 18px', 'marginTop': '10px',
+                                       'backgroundColor': COLORS['danger'], 'color': 'white'}),
+                ]),
 
-                        # Status feedback message
-                        html.Div(id='status-message',
-                                 style={'marginTop': '12px', 'padding': '10px 14px',
-                                        'borderRadius': '8px', 'textAlign': 'center',
-                                        'fontSize': '0.9em', 'display': 'none'}),
-                    ],
-                ),
+                html.Div(id='status-message',
+                         style={'marginTop': '12px', 'padding': '10px 14px', 'borderRadius': '8px',
+                                'textAlign': 'center', 'fontSize': '0.9em', 'display': 'none'}),
+            ]),
 
-                # ── Stats (grid layout from CSS) ────────────────────────────
-                html.Div(id='stats-cards'),
+            # ── Stats ─────────────────────────────────────────────────────────
+            html.Div(id='stats-cards'),
 
-                # ── Charts (grid layout from CSS) ───────────────────────────
-                html.Div(
-                    id='charts-row',
-                    children=[
-                        html.Div(
-                            className='dash-card',
-                            style=CARD_STYLE,
-                            children=[
-                                html.H3('\U0001f4c8 Sales Trend',
-                                        style={'color': COLORS['dark'], 'margin': '0 0 2px 0',
-                                               'fontSize': '1.1em'}),
-                                html.P('Daily totals \u2014 all products',
-                                       style={'color': '#9ca3af', 'fontSize': '0.78em',
-                                              'margin': '0 0 10px 0'}),
-                                dcc.Graph(id='sales-line-chart',
-                                          config={'displayModeBar': False, 'responsive': True}),
-                            ],
-                        ),
-                        html.Div(
-                            className='dash-card',
-                            style=CARD_STYLE,
-                            children=[
-                                html.H3('\U0001f3c6 Top Products',
-                                        style={'color': COLORS['dark'], 'margin': '0 0 2px 0',
-                                               'fontSize': '1.1em'}),
-                                html.P(f'Total {CEDI} sales by product (top 10)',
-                                       style={'color': '#9ca3af', 'fontSize': '0.78em',
-                                              'margin': '0 0 10px 0'}),
-                                dcc.Graph(id='product-bar-chart',
-                                          config={'displayModeBar': False, 'responsive': True}),
-                            ],
-                        ),
-                    ],
-                ),
+            # ── Charts ────────────────────────────────────────────────────────
+            html.Div(id='charts-row', children=[
 
-                html.Div(style={'height': '20px'}),
+                html.Div(className='chart-card', children=[
+                    html.H3('\U0001f4c8 Sales Trend',
+                            style={'color': COLORS['dark'], 'margin': '0 0 2px', 'fontSize': '1.1em'}),
+                    html.P('Daily totals \u2014 all products',
+                           style={'color': '#9ca3af', 'fontSize': '0.78em', 'margin': '0 0 12px'}),
+                    # Wrapper div with explicit height — Plotly sizes itself to fill this
+                    html.Div(className='graph-wrap', children=[
+                        dcc.Graph(id='sales-line-chart',
+                                  style={'height': '100%'},
+                                  config={'displayModeBar': False, 'responsive': True}),
+                    ]),
+                ]),
 
-                # ── Data table ──────────────────────────────────────────────
-                html.Div(
-                    id='data-table-container',
-                    className='dash-card',
-                    style={**CARD_STYLE, 'marginBottom': '24px'},
-                ),
+                html.Div(className='chart-card', children=[
+                    html.H3('\U0001f3c6 Top Products',
+                            style={'color': COLORS['dark'], 'margin': '0 0 2px', 'fontSize': '1.1em'}),
+                    html.P(f'Total {CEDI} by product (top 10)',
+                           style={'color': '#9ca3af', 'fontSize': '0.78em', 'margin': '0 0 12px'}),
+                    html.Div(className='graph-wrap', children=[
+                        dcc.Graph(id='product-bar-chart',
+                                  style={'height': '100%'},
+                                  config={'displayModeBar': False, 'responsive': True}),
+                    ]),
+                ]),
+            ]),
 
-                # ── Footer ──────────────────────────────────────────────────
-                html.Div(
-                    style={'textAlign': 'center', 'padding': '12px 0 24px',
-                           'color': '#9ca3af', 'fontSize': '0.83em'},
-                    children=[html.Ul(
-                        html.Li(html.A('William Thompson', href='https://yooku98.github.io/web',
-                                       style={'color': COLORS['primary']})),
-                        style={'listStyle': 'none', 'padding': 0, 'margin': 0},
-                    )],
-                ),
-            ],
-        ),
+            # ── Data table ────────────────────────────────────────────────────
+            html.Div(id='data-table-container',
+                     style={'background': 'white', 'borderRadius': '14px', 'padding': '22px',
+                            'boxShadow': '0 2px 10px rgba(0,0,0,0.07)', 'marginBottom': '24px'}),
+
+            # Footer
+            html.Div(style={'textAlign': 'center', 'padding': '10px 0 24px',
+                            'color': '#9ca3af', 'fontSize': '0.82em'},
+                     children=[html.Ul(
+                         html.Li(html.A('William Thompson', href='https://yooku98.github.io/web',
+                                        style={'color': COLORS['primary']})),
+                         style={'listStyle': 'none', 'padding': 0, 'margin': 0},
+                     )]),
+        ]),
     ],
 )
 
 # ── Callbacks ──────────────────────────────────────────────────────────────────
-
-# 1. Tab switching
 
 @app.callback(
     [Output('upload-section', 'style'),
      Output('manual-section', 'style'),
      Output('tab-upload', 'style'),
      Output('tab-manual', 'style')],
-    [Input('tab-upload', 'n_clicks'),
-     Input('tab-manual', 'n_clicks')],
+    [Input('tab-upload', 'n_clicks'), Input('tab-manual', 'n_clicks')],
 )
 def switch_tabs(_u, _m):
-    show_upload = ctx.triggered_id != 'tab-manual'
-    base = {'padding': '10px 20px', 'borderRadius': '8px', 'cursor': 'pointer',
-             'fontSize': '0.95em', 'fontWeight': '600',
-             'transition': 'all 0.2s', 'touchAction': 'manipulation'}
-    active   = {**base, 'border': 'none',
+    upload_active = ctx.triggered_id != 'tab-manual'
+    active   = {**BTN_BASE, 'padding': '10px 20px',
                  'backgroundColor': COLORS['primary'], 'color': 'white'}
-    inactive = {**base, 'border': f'2px solid {COLORS["primary"]}',
+    inactive = {**BTN_BASE, 'padding': '10px 20px',
+                'border': f'2px solid {COLORS["primary"]}',
                 'backgroundColor': 'white', 'color': COLORS['primary']}
-    if show_upload:
+    if upload_active:
         return {'display': 'block'}, {'display': 'none'}, active, inactive
     return {'display': 'none'}, {'display': 'block'}, inactive, active
 
-
-# 2. Data management
 
 @app.callback(
     [Output('stored-data',    'data'),
@@ -573,49 +485,43 @@ def switch_tabs(_u, _m):
      State('input-sales',   'value'),
      State('stored-data',   'data'),
      State('upload-data',   'filename')],
-    prevent_initial_call=True,  # never fires on load → localStorage is preserved
+    prevent_initial_call=True,
 )
 def manage_data(add_clicks, clear_clicks, upload_contents,
                 date, product, sales, current_data, filename):
 
     trigger = ctx.triggered_id
 
-    def ok_style():
+    def ok(msg):
         return {'marginTop': '12px', 'padding': '10px 14px', 'borderRadius': '8px',
                 'textAlign': 'center', 'fontSize': '0.9em', 'display': 'block',
                 'backgroundColor': '#d1fae5', 'color': '#065f46',
-                'border': f'1px solid {COLORS["success"]}'}
+                'border': f'1px solid {COLORS["success"]}'}, msg
 
-    def err_style():
+    def err(msg):
         return {'marginTop': '12px', 'padding': '10px 14px', 'borderRadius': '8px',
                 'textAlign': 'center', 'fontSize': '0.9em', 'display': 'block',
                 'backgroundColor': '#fee2e2', 'color': '#991b1b',
-                'border': f'1px solid {COLORS["danger"]}'}
+                'border': f'1px solid {COLORS["danger"]}'}, msg
 
-    # Upload
     if trigger == 'upload-data':
         if not upload_contents or not filename:
             raise PreventUpdate
         uploaded = parse_uploaded_file(upload_contents, filename)
         if uploaded is not None and not uploaded.empty:
-            return (uploaded.to_dict('records'),
-                    f'\u2705 Loaded {filename} \u2014 {len(uploaded)} rows',
-                    ok_style(), no_update, no_update)
-        return (current_data,
-                f'\u274c Could not parse "{filename}". Use CSV or Excel with date, product, sales columns.',
-                err_style(), no_update, no_update)
+            sty, msg = ok(f'\u2705 Loaded {filename} \u2014 {len(uploaded)} rows')
+            return uploaded.to_dict('records'), msg, sty, no_update, no_update
+        sty, msg = err(f'\u274c Could not parse "{filename}". Use CSV/Excel with date, product, sales columns.')
+        return current_data, msg, sty, no_update, no_update
 
-    # Add row
     if trigger == 'add-data-btn':
-        if not date or not product or str(product).strip() == '' or sales is None:
-            return (current_data,
-                    f'\u274c Please fill in Date, Product and Sales ({CEDI}).',
-                    err_style(), product, sales)
-        sales_val = float(sales)
-        if sales_val < 0:
-            return (current_data, '\u274c Sales value cannot be negative.',
-                    err_style(), product, sales)
-
+        if not date or not product or not str(product).strip() or sales is None:
+            sty, msg = err(f'\u274c Fill in all fields (Date, Product, Sales).')
+            return current_data, msg, sty, product, sales
+        v = float(sales)
+        if v < 0:
+            sty, msg = err('\u274c Sales cannot be negative.')
+            return current_data, msg, sty, product, sales
         existing = records_to_df(current_data)
         if not existing.empty and pd.api.types.is_datetime64_any_dtype(existing['date']):
             existing = existing.copy()
@@ -623,21 +529,18 @@ def manage_data(add_clicks, clear_clicks, upload_contents,
         new_row = pd.DataFrame({
             'date':    [pd.to_datetime(date).strftime('%Y-%m-%d')],
             'product': [str(product).strip()],
-            'sales':   [sales_val],
+            'sales':   [v],
         })
         combined = pd.concat([existing, new_row], ignore_index=True)
-        return (combined.to_dict('records'),
-                f'\u2705 Added: {product.strip()} \u2014 {fmt_cedi(sales_val)} on {date}',
-                ok_style(), '', None)
+        sty, msg = ok(f'\u2705 Added {product.strip()} \u2014 {fmt_cedi(v)} on {date}')
+        return combined.to_dict('records'), msg, sty, '', None
 
-    # Clear
     if trigger == 'clear-data-btn':
-        return [], '\u2705 All data cleared.', ok_style(), '', None
+        sty, msg = ok('\u2705 All data cleared.')
+        return [], msg, sty, '', None
 
     raise PreventUpdate
 
-
-# 3. Dashboard rendering
 
 @app.callback(
     [Output('sales-line-chart',     'figure'),
@@ -647,73 +550,65 @@ def manage_data(add_clicks, clear_clicks, upload_contents,
     Input('stored-data', 'data'),
 )
 def update_dashboard(stored_data):
-    """Fires on page load (reads localStorage) and on every data change."""
-
     data = records_to_df(stored_data)
 
-    # Stats
+    # ── Stats ──
     if data.empty:
-        stats_cards = [html.Div(
-            '\U0001f4ed No data yet \u2014 upload a file or enter records manually.',
-            style={'color': '#6b7280', 'padding': '18px', 'textAlign': 'center',
-                   'gridColumn': '1 / -1', 'backgroundColor': COLORS['white'],
-                   'borderRadius': '12px', 'boxShadow': '0 2px 8px rgba(0,0,0,0.07)'},
-        )]
+        stats = [html.Div('📭 No data yet — upload a file or enter records manually.',
+                          style={'color': '#6b7280', 'padding': '18px', 'textAlign': 'center',
+                                 'gridColumn': '1 / -1', 'background': 'white',
+                                 'borderRadius': '12px', 'boxShadow': '0 2px 8px rgba(0,0,0,0.07)'})]
     else:
         s = data['sales'].dropna()
-        stats_cards = [
-            create_stat_card('Total Sales',  fmt_cedi(s.sum()),          '\U0001f4b0', COLORS['success']),
-            create_stat_card('Average Sale', fmt_cedi(s.mean()),          '\U0001f4ca', COLORS['primary']),
-            create_stat_card('Products',     str(data['product'].nunique()), '\U0001f3f7\ufe0f', COLORS['warning']),
-            create_stat_card('Records',      str(len(data)),                  '\U0001f4dd', COLORS['secondary']),
+        stats = [
+            stat_card('Total Sales',  fmt_cedi(s.sum()),           '\U0001f4b0', COLORS['success']),
+            stat_card('Average Sale', fmt_cedi(s.mean()),           '\U0001f4ca', COLORS['primary']),
+            stat_card('Products',     str(data['product'].nunique()),'\U0001f3f7\ufe0f', COLORS['warning']),
+            stat_card('Records',      str(len(data)),                '\U0001f4dd', COLORS['secondary']),
         ]
 
-    # Line chart — one aggregated point per day
+    # ── Line chart ──
     if data.empty:
-        line_fig = empty_figure()
+        line_fig = empty_fig()
     else:
-        # Group by calendar date only (not datetime timestamp) to avoid
-        # microsecond floating-point artifacts like 23:59:59.9995 on x-axis
         clean = data.dropna(subset=['date', 'sales']).copy()
-        clean['_date_only'] = clean['date'].dt.normalize()   # midnight-snapped datetime
-        daily = (clean.groupby('_date_only', as_index=False)['sales']
+        clean['_d'] = clean['date'].dt.normalize()  # snap to midnight → no time artifacts
+        daily = (clean.groupby('_d', as_index=False)['sales']
                       .sum()
-                      .rename(columns={'_date_only': 'date'})
+                      .rename(columns={'_d': 'date'})
                       .sort_values('date'))
         if daily.empty:
-            line_fig = empty_figure('No dated sales data to display')
+            line_fig = empty_fig()
         else:
             line_fig = px.line(daily, x='date', y='sales',
-                               labels={'date': 'Date', 'sales': f'Sales ({CEDI})'})
+                               labels={'date': '', 'sales': ''})
             line_fig.update_traces(
                 line_color=COLORS['primary'], line_width=2.5,
                 mode='lines+markers',
                 marker=dict(size=5, color=COLORS['primary'], line=dict(width=2, color='white')),
                 fill='tozeroy', fillcolor='rgba(102,126,234,0.1)',
-                hovertemplate=f'%{{x}}<br><b>{CEDI}%{{y:,.0f}}</b><extra></extra>',
+                hovertemplate=f'%{{x|%b %d}}<br><b>{CEDI}%{{y:,.0f}}</b><extra></extra>',
             )
             line_fig.update_layout(
                 plot_bgcolor='white', paper_bgcolor='white',
-                autosize=True, height=280,
-                # Left margin accommodates tickprefix + numbers without clipping
-                margin=dict(l=64, r=16, t=10, b=44),
+                height=CHART_H,
+                margin=dict(l=60, r=12, t=8, b=40),
                 hovermode='x unified',
                 xaxis=dict(
-                    title=None,
                     showgrid=False, showline=True, linecolor='#e5e7eb',
-                    tickfont=dict(size=10), fixedrange=True,
-                    tickformat='%b %d',  # 'Jan 01' — strips time component entirely
+                    tickformat='%b %d', tickfont=dict(size=10), fixedrange=True,
+                    title=None,
                 ),
                 yaxis=dict(
-                    title=None,
-                    showgrid=True, gridcolor='#f3f4f6', showline=False,
+                    showgrid=True, gridcolor='#f0f0f0', zeroline=False,
                     tickprefix=CEDI, tickfont=dict(size=10), fixedrange=True,
+                    title=None,
                 ),
             )
 
-    # Bar chart — totals per product
+    # ── Bar chart ──
     if data.empty:
-        bar_fig = empty_figure()
+        bar_fig = empty_fig()
     else:
         ps = (data.dropna(subset=['product', 'sales'])
                   .groupby('product', as_index=False)['sales']
@@ -721,10 +616,10 @@ def update_dashboard(stored_data):
                   .sort_values('sales', ascending=False)
                   .head(10))
         if ps.empty:
-            bar_fig = empty_figure('No valid product / sales data')
+            bar_fig = empty_fig()
         else:
             bar_fig = px.bar(ps, x='product', y='sales',
-                             labels={'product': 'Product', 'sales': f'Sales ({CEDI})'},
+                             labels={'product': '', 'sales': ''},
                              color='sales',
                              color_continuous_scale=[[0, COLORS['primary']], [1, COLORS['secondary']]])
             bar_fig.update_traces(
@@ -732,83 +627,60 @@ def update_dashboard(stored_data):
             )
             bar_fig.update_layout(
                 plot_bgcolor='white', paper_bgcolor='white',
-                autosize=True, height=280,
-                margin=dict(l=64, r=16, t=10, b=60),  # b=60 for angled labels
+                height=CHART_H,
+                margin=dict(l=60, r=12, t=8, b=56),
                 coloraxis_showscale=False,
                 xaxis=dict(
-                    title=None,
                     showgrid=False, showline=True, linecolor='#e5e7eb',
                     categoryorder='total descending',
                     tickfont=dict(size=10), fixedrange=True,
-                    tickangle=-35,
+                    tickangle=-30, title=None,
                 ),
                 yaxis=dict(
-                    title=None,
-                    showgrid=True, gridcolor='#f3f4f6', showline=False,
+                    showgrid=True, gridcolor='#f0f0f0', zeroline=False,
                     tickprefix=CEDI, tickfont=dict(size=10), fixedrange=True,
+                    title=None,
                 ),
             )
 
-    # Data table
+    # ── Table ──
     if data.empty:
-        table_content = html.Div(
-            '\U0001f4ed No data to display.',
-            style={'color': '#6b7280', 'textAlign': 'center', 'padding': '20px'},
-        )
+        tbl = html.Div('📭 No data to display.',
+                       style={'color': '#6b7280', 'textAlign': 'center', 'padding': '20px'})
     else:
-        display = data.sort_values('date', ascending=False).copy()
-        display['date']  = display['date'].dt.strftime('%Y-%m-%d')
-        display['sales'] = display['sales'].round(2)
-
-        col_labels = {'date': 'Date', 'product': 'Product', 'sales': f'Sales ({CEDI})'}
-        columns = [{'name': col_labels.get(c, c.title()), 'id': c} for c in display.columns]
-
-        table_content = html.Div([
-            html.Div(
-                id='table-header-row',
-                style={'display': 'flex', 'justifyContent': 'space-between',
-                       'alignItems': 'center', 'marginBottom': '12px',
-                       'flexWrap': 'wrap', 'gap': '8px'},
-                children=[
-                    html.H3('\U0001f4cb All Sales Data',
-                            style={'color': COLORS['dark'], 'margin': '0', 'fontSize': '1.1em'}),
-                    html.Span(f'{len(data)} records',
-                              style={'backgroundColor': COLORS['primary'], 'color': 'white',
-                                     'padding': '3px 12px', 'borderRadius': '20px',
-                                     'fontSize': '0.8em', 'fontWeight': '600'}),
-                ],
-            ),
+        disp = data.sort_values('date', ascending=False).copy()
+        disp['date']  = disp['date'].dt.strftime('%Y-%m-%d')
+        disp['sales'] = disp['sales'].round(2)
+        col_map = {'date': 'Date', 'product': 'Product', 'sales': f'Sales ({CEDI})'}
+        tbl = html.Div([
+            html.Div(className='tbl-hdr', children=[
+                html.H3('\U0001f4cb All Sales Data',
+                        style={'color': COLORS['dark'], 'margin': '0', 'fontSize': '1.1em'}),
+                html.Span(f'{len(data)} records',
+                          style={'backgroundColor': COLORS['primary'], 'color': 'white',
+                                 'padding': '3px 12px', 'borderRadius': '20px',
+                                 'fontSize': '0.8em', 'fontWeight': '600'}),
+            ]),
             dash_table.DataTable(
                 id='data-table',
-                data=display.to_dict('records'),
-                columns=columns,
-                page_size=10,
-                sort_action='native',
-                filter_action='native',
-                style_table={'overflowX': 'auto', 'minWidth': '100%',
-                             'WebkitOverflowScrolling': 'touch'},
-                style_cell={
-                    'textAlign': 'left', 'padding': '9px 12px',
-                    'fontFamily': "'Segoe UI', Tahoma, Geneva, Verdana, sans-serif",
-                    'fontSize': '0.88em',
-                    'whiteSpace': 'nowrap',
-                    'minWidth': '80px',
-                },
-                style_header={
-                    'backgroundColor': COLORS['primary'], 'color': 'white',
-                    'fontWeight': '600', 'border': 'none', 'fontSize': '0.85em',
-                },
+                data=disp.to_dict('records'),
+                columns=[{'name': col_map.get(c, c.title()), 'id': c} for c in disp.columns],
+                page_size=10, sort_action='native', filter_action='native',
+                style_table={'overflowX': 'auto', 'minWidth': '100%'},
+                style_cell={'textAlign': 'left', 'padding': '9px 12px', 'whiteSpace': 'nowrap',
+                            'fontFamily': "'Segoe UI', Tahoma, Geneva, Verdana, sans-serif",
+                            'fontSize': '0.88em', 'minWidth': '80px'},
+                style_header={'backgroundColor': COLORS['primary'], 'color': 'white',
+                              'fontWeight': '600', 'border': 'none', 'fontSize': '0.85em'},
                 style_data={'border': '1px solid #e5e7eb'},
                 style_data_conditional=[
                     {'if': {'row_index': 'odd'}, 'backgroundColor': '#f9fafb'},
-                    {'if': {'column_id': 'sales'},
-                     'textAlign': 'right', 'fontWeight': '600',
-                     'fontFeatureSettings': '"tnum"'},
+                    {'if': {'column_id': 'sales'}, 'textAlign': 'right', 'fontWeight': '600'},
                 ],
             ),
         ])
 
-    return line_fig, bar_fig, stats_cards, table_content
+    return line_fig, bar_fig, stats, tbl
 
 
 if __name__ == '__main__':
