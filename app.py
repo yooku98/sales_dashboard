@@ -9,7 +9,7 @@ import plotly.graph_objects as go
 from datetime import datetime
 
 CEDI = '\u20b5'  # ₵
-
+dcc.Store(id="data-store", storage_type="session"),
 app = Dash(
     __name__,
     meta_tags=[
