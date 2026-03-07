@@ -1,12 +1,18 @@
 import base64
 import io
 import os
+import uuid
 import pandas as pd
 from dash import Dash, dcc, html, Input, Output, State, dash_table, ctx, no_update
 from dash.exceptions import PreventUpdate
 import plotly.express as px
 import plotly.graph_objects as go
 from datetime import datetime
+from supabase import create_client, Client
+
+SUPABASE_URL = os.environ.get("SUPABASE_URL", "")
+SUPABASE_KEY = os.environ.get("SUPABASE_KEY", "")
+supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
 
 CEDI = '\u20b5'  # ₵
 dcc.Store(id="data-store", storage_type="session"),
@@ -162,30 +168,39 @@ def clean_col_names(df):
     return df
 
 
-def build_seed_data():
-    fallback = pd.DataFrame({
-        'date':    pd.date_range('2024-01-01', periods=10, freq='D').strftime('%Y-%m-%d').tolist(),
-        'product': ['Product A', 'Product B', 'Product C'] * 3 + ['Product A'],
-        'sales':   [100, 150, 200, 120, 180, 220, 140, 190, 230, 160],
-    })
-    for path, reader in [('data/sales.csv', pd.read_csv), ('data/sales.xlsx', pd.read_excel)]:
-        if os.path.exists(path):
-            try:
-                d = reader(path)
-                d = clean_col_names(d)
-                for col in ['date', 'product', 'sales']:
-                    if col not in d.columns:
-                        d[col] = None
-                d = d[['date', 'product', 'sales']].dropna(how='all')
-                d['sales'] = pd.to_numeric(d['sales'], errors='coerce')
-                d['date']  = pd.to_datetime(d['date'], errors='coerce').dt.strftime('%Y-%m-%d')
-                return d.dropna(subset=['sales']).to_dict('records')
-            except Exception:
-                pass
-    return fallback.to_dict('records')
+def load_user_data(user_id: str) -> list:
+    """Load all sales records for a given user from Supabase."""
+    try:
+        response = supabase.table("sales_records") \
+            .select("*") \
+            .eq("user_id", user_id) \
+            .execute()
+        return response.data if response.data else []
+    except Exception as e:
+        print(f"[load_user_data] {e}")
+        return []
 
 
-SEED_DATA = build_seed_data()
+def insert_rows(user_id: str, df: pd.DataFrame):
+    """Insert rows from a DataFrame into Supabase for the given user."""
+    for _, row in df.iterrows():
+        try:
+            supabase.table("sales_records").insert({
+                "user_id": user_id,
+                "date": row["date"],
+                "product": row["product"],
+                "sales": row["sales"],
+            }).execute()
+        except Exception as e:
+            print(f"[insert_rows] {e}")
+
+
+def delete_user_data(user_id: str):
+    """Delete all sales records for a given user from Supabase."""
+    try:
+        supabase.table("sales_records").delete().eq("user_id", user_id).execute()
+    except Exception as e:
+        print(f"[delete_user_data] {e}")
 
 
 def records_to_df(records):
@@ -287,7 +302,8 @@ app.layout = html.Div(
            'margin': '0', 'fontFamily': "'Segoe UI', Tahoma, Geneva, Verdana, sans-serif"},
     children=[
 
-        dcc.Store(id='stored-data', storage_type='local', data=SEED_DATA),
+        dcc.Store(id='user-id-store', storage_type='local'),
+        dcc.Store(id='stored-data', storage_type='session', data=[]),
 
         html.Div(id='app-header', style={
             'background': f'linear-gradient(135deg, {COLORS["primary"]} 0%, {COLORS["secondary"]} 100%)',
@@ -296,7 +312,7 @@ app.layout = html.Div(
         }, children=[
             html.H1('\U0001f4ca Sales Analytics Dashboard', className='hdr-title',
                     style={'margin': '0', 'fontSize': '1.9em', 'fontWeight': '700'}),
-            html.P(f'Track sales in Ghana Cedis ({CEDI}) \u2014 data saved in this browser',
+            html.P(f'Track sales in Ghana Cedis ({CEDI}) \u2014 data saved to Supabase',
                    className='hdr-sub',
                    style={'margin': '6px 0 0', 'fontSize': '0.95em', 'opacity': '0.88'}),
         ]),
@@ -419,6 +435,18 @@ app.layout = html.Div(
 )
 
 
+
+@app.callback(
+    Output('user-id-store', 'data'),
+    Input('user-id-store', 'data'),
+)
+def init_user_id(existing_id):
+    """Generate and persist a UUID for this browser session if not already set."""
+    if existing_id:
+        return existing_id
+    return str(uuid.uuid4())
+
+
 @app.callback(
     [Output('upload-section', 'style'),
      Output('manual-section', 'style'),
@@ -450,14 +478,17 @@ def switch_tabs(_u, _m):
     [State('input-date',    'date'),
      State('input-product', 'value'),
      State('input-sales',   'value'),
-     State('stored-data',   'data'),
-     State('upload-data',   'filename')],
+     State('upload-data',   'filename'),
+     State('user-id-store', 'data')],
     prevent_initial_call=True,
 )
 def manage_data(add_clicks, clear_clicks, upload_contents,
-                date, product, sales, current_data, filename):
+                date, product, sales, filename, user_id):
 
     trigger = ctx.triggered_id
+
+    if not user_id:
+        raise PreventUpdate
 
     def ok(msg):
         return {'marginTop': '12px', 'padding': '10px 14px', 'borderRadius': '8px',
@@ -476,34 +507,34 @@ def manage_data(add_clicks, clear_clicks, upload_contents,
             raise PreventUpdate
         uploaded = parse_uploaded_file(upload_contents, filename)
         if uploaded is not None and not uploaded.empty:
-            sty, msg = ok(f'\u2705 Loaded {filename} \u2014 {len(uploaded)} rows')
-            return uploaded.to_dict('records'), msg, sty, no_update, no_update
+            insert_rows(user_id, uploaded)
+            refreshed = load_user_data(user_id)
+            sty, msg = ok(f'\u2705 Loaded {filename} \u2014 {len(uploaded)} rows saved to Supabase')
+            return refreshed, msg, sty, no_update, no_update
         sty, msg = err(f'\u274c Could not parse "{filename}". Use CSV/Excel with date, product, sales columns.')
-        return current_data, msg, sty, no_update, no_update
+        return no_update, msg, sty, no_update, no_update
 
     if trigger == 'add-data-btn':
         if not date or not product or not str(product).strip() or sales is None:
             sty, msg = err('\u274c Fill in all fields (Date, Product, Sales).')
-            return current_data, msg, sty, product, sales
+            return no_update, msg, sty, product, sales
         v = float(sales)
         if v < 0:
             sty, msg = err('\u274c Sales cannot be negative.')
-            return current_data, msg, sty, product, sales
-        existing = records_to_df(current_data)
-        if not existing.empty and pd.api.types.is_datetime64_any_dtype(existing['date']):
-            existing = existing.copy()
-            existing['date'] = existing['date'].dt.strftime('%Y-%m-%d')
+            return no_update, msg, sty, product, sales
         new_row = pd.DataFrame({
             'date':    [pd.to_datetime(date).strftime('%Y-%m-%d')],
             'product': [str(product).strip()],
             'sales':   [v],
         })
-        combined = pd.concat([existing, new_row], ignore_index=True)
-        sty, msg = ok(f'\u2705 Added {product.strip()} \u2014 {fmt_cedi(v)} on {date}')
-        return combined.to_dict('records'), msg, sty, '', None
+        insert_rows(user_id, new_row)
+        refreshed = load_user_data(user_id)
+        sty, msg = ok(f'\u2705 Added {str(product).strip()} \u2014 {fmt_cedi(v)} on {date}')
+        return refreshed, msg, sty, '', None
 
     if trigger == 'clear-data-btn':
-        sty, msg = ok('\u2705 All data cleared.')
+        delete_user_data(user_id)
+        sty, msg = ok('\u2705 All data cleared from Supabase.')
         return [], msg, sty, '', None
 
     raise PreventUpdate
@@ -514,10 +545,15 @@ def manage_data(add_clicks, clear_clicks, upload_contents,
      Output('product-bar-chart',    'figure'),
      Output('stats-cards',          'children'),
      Output('data-table-container', 'children')],
-    Input('stored-data', 'data'),
+    [Input('stored-data',    'data'),
+     Input('user-id-store',  'data')],
 )
-def update_dashboard(stored_data):
-    data = records_to_df(stored_data)
+def update_dashboard(stored_data, user_id):
+    if user_id:
+        records = load_user_data(user_id)
+    else:
+        records = stored_data or []
+    data = records_to_df(records)
 
     if data.empty:
         stats = [html.Div('\U0001f4ed No data yet \u2014 upload a file or enter records manually.',
