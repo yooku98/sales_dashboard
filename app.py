@@ -297,142 +297,157 @@ def stat_card(title, value, icon, color):
     ])
 
 
-app.layout = html.Div(
-    style={'backgroundColor': COLORS['light'], 'minHeight': '100vh',
-           'margin': '0', 'fontFamily': "'Segoe UI', Tahoma, Geneva, Verdana, sans-serif"},
-    children=[
+def dashboard_layout():
+    return html.Div(
+        style={'backgroundColor': COLORS['light'], 'minHeight': '100vh',
+               'margin': '0', 'fontFamily': "'Segoe UI', Tahoma, Geneva, Verdana, sans-serif"},
+        children=[
 
-        dcc.Store(id='user-id-store', storage_type='local'),
-        dcc.Store(id='stored-data', storage_type='session', data=[]),
+            dcc.Store(id='user-id-store', storage_type='local'),
+            dcc.Store(id='stored-data', storage_type='session', data=[]),
 
-        html.Div(id='app-header', style={
-            'background': f'linear-gradient(135deg, {COLORS["primary"]} 0%, {COLORS["secondary"]} 100%)',
-            'color': 'white', 'boxShadow': '0 4px 14px rgba(102,126,234,0.3)',
-            'marginBottom': '18px',
-        }, children=[
-            html.H1('\U0001f4ca Sales Analytics Dashboard', className='hdr-title',
-                    style={'margin': '0', 'fontSize': '1.9em', 'fontWeight': '700'}),
-            html.P(f'Track sales in Ghana Cedis ({CEDI}) \u2014 data saved to Supabase',
-                   className='hdr-sub',
-                   style={'margin': '6px 0 0', 'fontSize': '0.95em', 'opacity': '0.88'}),
-        ]),
-
-        html.Div(id='main-container', children=[
-
-            html.Div(className='input-card', children=[
-
-                html.Div(className='tab-row', children=[
-                    html.Button('\U0001f4e4 Upload File', id='tab-upload', n_clicks=1,
-                                style={**BTN_BASE, 'padding': '10px 20px',
-                                       'backgroundColor': COLORS['primary'], 'color': 'white'}),
-                    html.Button('\u270f\ufe0f Enter Manually', id='tab-manual', n_clicks=0,
-                                style={**BTN_BASE, 'padding': '10px 20px',
-                                       'border': f'2px solid {COLORS["primary"]}',
-                                       'backgroundColor': 'white', 'color': COLORS['primary']}),
-                ]),
-
-                html.Div(id='upload-section', children=[
-                    html.H3('\U0001f4e4 Upload Your Data',
-                            style={'color': COLORS['dark'], 'fontSize': '1.2em', 'margin': '0 0 14px'}),
-                    dcc.Upload(id='upload-data', multiple=False,
-                               style={
-                                   'height': '130px', 'borderWidth': '2px', 'borderStyle': 'dashed',
-                                   'borderRadius': '10px', 'borderColor': COLORS['primary'],
-                                   'backgroundColor': '#f9fafb', 'cursor': 'pointer',
-                                   'display': 'flex', 'alignItems': 'center', 'justifyContent': 'center',
-                                   'textAlign': 'center', 'WebkitTapHighlightColor': 'transparent',
-                               },
-                               children=html.Div([
-                                   html.Div('\U0001f4c1', className='upl-icon',
-                                            style={'fontSize': '2.2em', 'marginBottom': '6px'}),
-                                   html.Div('Drag and Drop or Tap to Select', className='upl-main',
-                                            style={'fontSize': '1em', 'fontWeight': '600'}),
-                                   html.Div('CSV or Excel (.xlsx)', className='upl-sub',
-                                            style={'fontSize': '0.82em', 'color': '#6b7280', 'marginTop': '3px'}),
-                               ])),
-                ]),
-
-                html.Div(id='manual-section', style={'display': 'none'}, children=[
-                    html.H3('\u270f\ufe0f Enter Sales Data',
-                            style={'color': COLORS['dark'], 'fontSize': '1.2em', 'margin': '0 0 14px'}),
-                    html.Div(id='manual-form-grid', children=[
-                        html.Div([
-                            html.Label('Date', style=LABEL_STYLE),
-                            dcc.DatePickerSingle(id='input-date',
-                                                 date=datetime.today().strftime('%Y-%m-%d'),
-                                                 display_format='YYYY-MM-DD',
-                                                 style={'width': '100%'}),
-                        ]),
-                        html.Div([
-                            html.Label('Product', style=LABEL_STYLE),
-                            dcc.Input(id='input-product', type='text',
-                                      placeholder='Product name', style=INPUT_STYLE),
-                        ]),
-                        html.Div([
-                            html.Label(f'Sales ({CEDI})', style=LABEL_STYLE),
-                            dcc.Input(id='input-sales', type='number', min=0,
-                                      placeholder='0.00', style=INPUT_STYLE),
-                        ]),
-                        html.Div([
-                            html.Label('\u00a0', style={**LABEL_STYLE, 'visibility': 'hidden'}),
-                            html.Button('\u2795 Add', id='add-data-btn', n_clicks=0,
-                                        style={**BTN_BASE, 'width': '100%', 'padding': '10px 18px',
-                                               'backgroundColor': COLORS['success'], 'color': 'white'}),
-                        ]),
-                    ]),
-                    html.Button('\U0001f5d1\ufe0f Clear All Data', id='clear-data-btn', n_clicks=0,
-                                style={**BTN_BASE, 'padding': '9px 18px', 'marginTop': '10px',
-                                       'backgroundColor': COLORS['danger'], 'color': 'white'}),
-                ]),
-
-                html.Div(id='status-message',
-                         style={'marginTop': '12px', 'padding': '10px 14px', 'borderRadius': '8px',
-                                'textAlign': 'center', 'fontSize': '0.9em', 'display': 'none'}),
+            html.Div(id='app-header', style={
+                'background': f'linear-gradient(135deg, {COLORS["primary"]} 0%, {COLORS["secondary"]} 100%)',
+                'color': 'white', 'boxShadow': '0 4px 14px rgba(102,126,234,0.3)',
+                'marginBottom': '18px',
+            }, children=[
+                html.H1('\U0001f4ca Sales Analytics Dashboard', className='hdr-title',
+                        style={'margin': '0', 'fontSize': '1.9em', 'fontWeight': '700'}),
+                html.P(f'Track sales in Ghana Cedis ({CEDI}) \u2014 data saved to Supabase',
+                       className='hdr-sub',
+                       style={'margin': '6px 0 0', 'fontSize': '0.95em', 'opacity': '0.88'}),
             ]),
 
-            html.Div(id='stats-cards'),
+            html.Div(id='main-container', children=[
 
-            html.Div(id='charts-row', children=[
+                html.Div(className='input-card', children=[
 
-                html.Div(className='chart-card', children=[
-                    html.H3('\U0001f4c8 Sales Trend',
-                            style={'color': COLORS['dark'], 'margin': '0 0 2px', 'fontSize': '1.1em'}),
-                    html.P('Daily totals \u2014 all products',
-                           style={'color': '#9ca3af', 'fontSize': '0.78em', 'margin': '0 0 12px'}),
-                    html.Div(className='graph-wrap', children=[
-                        dcc.Graph(id='sales-line-chart',
-                                  style={'height': '100%'},
-                                  config={'displayModeBar': False, 'responsive': True}),
+                    html.Div(className='tab-row', children=[
+                        html.Button('\U0001f4e4 Upload File', id='tab-upload', n_clicks=1,
+                                    style={**BTN_BASE, 'padding': '10px 20px',
+                                           'backgroundColor': COLORS['primary'], 'color': 'white'}),
+                        html.Button('\u270f\ufe0f Enter Manually', id='tab-manual', n_clicks=0,
+                                    style={**BTN_BASE, 'padding': '10px 20px',
+                                           'border': f'2px solid {COLORS["primary"]}',
+                                           'backgroundColor': 'white', 'color': COLORS['primary']}),
+                    ]),
+
+                    html.Div(id='upload-section', children=[
+                        html.H3('\U0001f4e4 Upload Your Data',
+                                style={'color': COLORS['dark'], 'fontSize': '1.2em', 'margin': '0 0 14px'}),
+                        dcc.Upload(id='upload-data', multiple=False,
+                                   style={
+                                       'height': '130px', 'borderWidth': '2px', 'borderStyle': 'dashed',
+                                       'borderRadius': '10px', 'borderColor': COLORS['primary'],
+                                       'backgroundColor': '#f9fafb', 'cursor': 'pointer',
+                                       'display': 'flex', 'alignItems': 'center', 'justifyContent': 'center',
+                                       'textAlign': 'center', 'WebkitTapHighlightColor': 'transparent',
+                                   },
+                                   children=html.Div([
+                                       html.Div('\U0001f4c1', className='upl-icon',
+                                                style={'fontSize': '2.2em', 'marginBottom': '6px'}),
+                                       html.Div('Drag and Drop or Tap to Select', className='upl-main',
+                                                style={'fontSize': '1em', 'fontWeight': '600'}),
+                                       html.Div('CSV or Excel (.xlsx)', className='upl-sub',
+                                                style={'fontSize': '0.82em', 'color': '#6b7280', 'marginTop': '3px'}),
+                                   ])),
+                    ]),
+
+                    html.Div(id='manual-section', style={'display': 'none'}, children=[
+                        html.H3('\u270f\ufe0f Enter Sales Data',
+                                style={'color': COLORS['dark'], 'fontSize': '1.2em', 'margin': '0 0 14px'}),
+                        html.Div(id='manual-form-grid', children=[
+                            html.Div([
+                                html.Label('Date', style=LABEL_STYLE),
+                                dcc.DatePickerSingle(id='input-date',
+                                                     date=datetime.today().strftime('%Y-%m-%d'),
+                                                     display_format='YYYY-MM-DD',
+                                                     style={'width': '100%'}),
+                            ]),
+                            html.Div([
+                                html.Label('Product', style=LABEL_STYLE),
+                                dcc.Input(id='input-product', type='text',
+                                          placeholder='Product name', style=INPUT_STYLE),
+                            ]),
+                            html.Div([
+                                html.Label(f'Sales ({CEDI})', style=LABEL_STYLE),
+                                dcc.Input(id='input-sales', type='number', min=0,
+                                          placeholder='0.00', style=INPUT_STYLE),
+                            ]),
+                            html.Div([
+                                html.Label('\u00a0', style={**LABEL_STYLE, 'visibility': 'hidden'}),
+                                html.Button('\u2795 Add', id='add-data-btn', n_clicks=0,
+                                            style={**BTN_BASE, 'width': '100%', 'padding': '10px 18px',
+                                                   'backgroundColor': COLORS['success'], 'color': 'white'}),
+                            ]),
+                        ]),
+                        html.Button('\U0001f5d1\ufe0f Clear All Data', id='clear-data-btn', n_clicks=0,
+                                    style={**BTN_BASE, 'padding': '9px 18px', 'marginTop': '10px',
+                                           'backgroundColor': COLORS['danger'], 'color': 'white'}),
+                    ]),
+
+                    html.Div(id='status-message',
+                             style={'marginTop': '12px', 'padding': '10px 14px', 'borderRadius': '8px',
+                                    'textAlign': 'center', 'fontSize': '0.9em', 'display': 'none'}),
+                ]),
+
+                html.Div(id='stats-cards'),
+
+                html.Div(id='charts-row', children=[
+
+                    html.Div(className='chart-card', children=[
+                        html.H3('\U0001f4c8 Sales Trend',
+                                style={'color': COLORS['dark'], 'margin': '0 0 2px', 'fontSize': '1.1em'}),
+                        html.P('Daily totals \u2014 all products',
+                               style={'color': '#9ca3af', 'fontSize': '0.78em', 'margin': '0 0 12px'}),
+                        html.Div(className='graph-wrap', children=[
+                            dcc.Graph(id='sales-line-chart',
+                                      style={'height': '100%'},
+                                      config={'displayModeBar': False, 'responsive': True}),
+                        ]),
+                    ]),
+
+                    html.Div(className='chart-card', children=[
+                        html.H3('\U0001f3c6 Top Products',
+                                style={'color': COLORS['dark'], 'margin': '0 0 2px', 'fontSize': '1.1em'}),
+                        html.P(f'Total {CEDI} by product (top 10)',
+                               style={'color': '#9ca3af', 'fontSize': '0.78em', 'margin': '0 0 12px'}),
+                        html.Div(className='graph-wrap', children=[
+                            dcc.Graph(id='product-bar-chart',
+                                      style={'height': '100%'},
+                                      config={'displayModeBar': False, 'responsive': True}),
+                        ]),
                     ]),
                 ]),
 
-                html.Div(className='chart-card', children=[
-                    html.H3('\U0001f3c6 Top Products',
-                            style={'color': COLORS['dark'], 'margin': '0 0 2px', 'fontSize': '1.1em'}),
-                    html.P(f'Total {CEDI} by product (top 10)',
-                           style={'color': '#9ca3af', 'fontSize': '0.78em', 'margin': '0 0 12px'}),
-                    html.Div(className='graph-wrap', children=[
-                        dcc.Graph(id='product-bar-chart',
-                                  style={'height': '100%'},
-                                  config={'displayModeBar': False, 'responsive': True}),
-                    ]),
-                ]),
+                html.Div(id='data-table-container',
+                         style={'background': 'white', 'borderRadius': '14px', 'padding': '22px',
+                                'boxShadow': '0 2px 10px rgba(0,0,0,0.07)', 'marginBottom': '24px'}),
+
+                html.Div(style={'textAlign': 'center', 'padding': '10px 0 24px',
+                                'color': '#9ca3af', 'fontSize': '0.82em'},
+                         children=[html.Ul(
+                             html.Li(html.A('William Thompson', href='https://yooku98.github.io/web',
+                                            style={'color': COLORS['primary']})),
+                             style={'listStyle': 'none', 'padding': 0, 'margin': 0},
+                         )]),
             ]),
+        ],
+    )
 
-            html.Div(id='data-table-container',
-                     style={'background': 'white', 'borderRadius': '14px', 'padding': '22px',
-                            'boxShadow': '0 2px 10px rgba(0,0,0,0.07)', 'marginBottom': '24px'}),
 
-            html.Div(style={'textAlign': 'center', 'padding': '10px 0 24px',
-                            'color': '#9ca3af', 'fontSize': '0.82em'},
-                     children=[html.Ul(
-                         html.Li(html.A('William Thompson', href='https://yooku98.github.io/web',
-                                        style={'color': COLORS['primary']})),
-                         style={'listStyle': 'none', 'padding': 0, 'margin': 0},
-                     )]),
-        ]),
-    ],
+app.layout = html.Div([
+    dcc.Location(id='url', refresh=False),
+    html.Div(id='page-content'),
+])
+
+
+@app.callback(
+    Output('page-content', 'children'),
+    Input('url', 'pathname'),
 )
+def render_page_content(pathname):
+    return dashboard_layout()
 
 
 
