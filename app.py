@@ -449,16 +449,16 @@ app.layout = html.Div([
 def route_pages(pathname):
 
     if pathname == "/login":
-        return login.py
+        return login_layout
 
     elif pathname == "/signup":
-        return signup.py
+        return signup_layout
 
     elif pathname == "/dashboard":
         return dashboard_layout
 
     else:
-        return login.py
+        return login_layout
 
 
 
