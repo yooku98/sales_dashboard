@@ -1,30 +1,9 @@
 import dash
 from dash import html, dcc, Input, Output, State
 from supabase_client import supabase
-from dash.exceptions import PreventUpdate
 
 dash.register_page(__name__, path="/login")
-login_layout = html.Div([
-    html.H2("Login"),
 
-    dcc.Input(
-        id="login-email",
-        type="email",
-        placeholder="Email"
-    ),
-
-    dcc.Input(
-        id="login-password",
-        type="password",
-        placeholder="Password"
-    ),
-
-    html.Button("Login", id="login-btn"),
-
-    html.Br(),
-
-    dcc.Link("Create account", href="/signup")
-])
 layout = html.Div(
     style={
         "display": "flex",
@@ -35,7 +14,6 @@ layout = html.Div(
         "fontFamily": "Segoe UI",
     },
     children=[
-        # dcc.Location at top level, not nested inside card
         dcc.Location(id="login-redirect"),
 
         html.Div(
@@ -88,7 +66,7 @@ layout = html.Div(
                     style={"marginTop": "20px", "textAlign": "center"},
                 ),
 
-                # Store holds session data safely — not exposed in URL
+                # Session store — token and user_id stored here, never in URL
                 dcc.Store(id="session-store", storage_type="session"),
             ],
         ),

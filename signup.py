@@ -1,30 +1,9 @@
 import dash
 from dash import html, dcc, Input, Output, State
-
 from supabase_client import supabase
 
 dash.register_page(__name__, path="/signup")
-signup_layout = html.Div([
-    html.H2("Sign Up"),
 
-    dcc.Input(
-        id="signup-email",
-        type="email",
-        placeholder="Email"
-    ),
-
-    dcc.Input(
-        id="signup-password",
-        type="password",
-        placeholder="Password"
-    ),
-
-    html.Button("Create Account", id="signup-btn"),
-
-    html.Br(),
-
-    dcc.Link("Already have an account?", href="/login")
-])
 layout = html.Div(
     style={
         "display": "flex",
@@ -35,7 +14,6 @@ layout = html.Div(
         "fontFamily": "Segoe UI",
     },
     children=[
-        # dcc.Location at top level, not nested inside card
         dcc.Location(id="signup-redirect"),
 
         html.Div(

@@ -15,9 +15,9 @@ SUPABASE_KEY = os.environ.get("SUPABASE_KEY", "")
 supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
 
 CEDI = '\u20b5'  # ₵
-dcc.Store(id="data-store", storage_type="session"),
 app = Dash(
     __name__,
+    use_pages=True,
     meta_tags=[
         {'name': 'viewport', 'content': 'width=device-width, initial-scale=1'},
         {'name': 'mobile-web-app-capable', 'content': 'yes'},
@@ -438,42 +438,28 @@ def dashboard_layout():
 
 app.layout = html.Div([
     dcc.Location(id='url', refresh=False),
+    dcc.Store(id='session-store', storage_type='session'),
     html.Div(id='page-content'),
 ])
 
-dashboard_layout = html.Div([
-    html.H1("Sales Dashboard"),
-    # your charts and tables
-])
 @app.callback(
     Output("page-content", "children"),
-    Input("url", "pathname")
+    Input("url", "pathname"),
+    State("session-store", "data"),
 )
-def route_pages(pathname):
+def route_pages(pathname, session):
+    # Protect dashboard — redirect to login if no valid session
+    if pathname == "/dashboard":
+        if not session or not session.get("user_id"):
+            return dcc.Location(href="/login", id="auth-redirect")
+        return dashboard_layout()
 
-    if pathname == "/login":
-        return login_layout
+    if pathname == "/signup":
+        return dcc.Location(href="/signup", id="page-redirect")
 
-    elif pathname == "/signup":
-        return signup_layout
+    # Default: show login
+    return dcc.Location(href="/login", id="page-redirect")
 
-    elif pathname == "/dashboard":
-        return dashboard_layout
-
-    else:
-        return login_layout
-
-
-
-@app.callback(
-    Output('user-id-store', 'data'),
-    Input('user-id-store', 'data'),
-)
-def init_user_id(existing_id):
-    """Generate and persist a UUID for this browser session if not already set."""
-    if existing_id:
-        return existing_id
-    return str(uuid.uuid4())
 
 
 @app.callback(
@@ -508,11 +494,12 @@ def switch_tabs(_u, _m):
      State('input-product', 'value'),
      State('input-sales',   'value'),
      State('upload-data',   'filename'),
-     State('user-id-store', 'data')],
+     State('session-store', 'data')],
     prevent_initial_call=True,
 )
 def manage_data(add_clicks, clear_clicks, upload_contents,
-                date, product, sales, filename, user_id):
+                date, product, sales, filename, session):
+    user_id = (session or {}).get('user_id')
 
     trigger = ctx.triggered_id
 
@@ -575,9 +562,10 @@ def manage_data(add_clicks, clear_clicks, upload_contents,
      Output('stats-cards',          'children'),
      Output('data-table-container', 'children')],
     [Input('stored-data',    'data'),
-     Input('user-id-store',  'data')],
+     Input('session-store',  'data')],
 )
-def update_dashboard(stored_data, user_id):
+def update_dashboard(stored_data, session):
+    user_id = (session or {}).get('user_id')
     if user_id:
         records = load_user_data(user_id)
     else:
