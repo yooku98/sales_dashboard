@@ -441,7 +441,10 @@ app.layout = html.Div([
     html.Div(id='page-content'),
 ])
 
-
+dashboard_layout = html.Div([
+    html.H1("Sales Dashboard"),
+    # your charts and tables
+])
 @app.callback(
     Output("page-content", "children"),
     Input("url", "pathname")
