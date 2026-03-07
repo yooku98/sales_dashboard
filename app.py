@@ -443,11 +443,22 @@ app.layout = html.Div([
 
 
 @app.callback(
-    Output('page-content', 'children'),
-    Input('url', 'pathname'),
+    Output("page-content", "children"),
+    Input("url", "pathname")
 )
-def render_page_content(pathname):
-    return dashboard_layout()
+def route_pages(pathname):
+
+    if pathname == "/login":
+        return login.py
+
+    elif pathname == "/signup":
+        return signup.py
+
+    elif pathname == "/dashboard":
+        return dashboard_layout
+
+    else:
+        return login.py
 
 
 
