@@ -12,16 +12,19 @@ layout = html.Div(
         "alignItems": "center",
         "justifyContent": "center",
         "background": "#f4f6f8",
-        "fontFamily": "Segoe UI"
+        "fontFamily": "Segoe UI",
     },
     children=[
+        # dcc.Location at top level, not nested inside card
+        dcc.Location(id="login-redirect"),
+
         html.Div(
             style={
                 "width": "350px",
                 "padding": "30px",
                 "borderRadius": "10px",
                 "background": "white",
-                "boxShadow": "0 4px 10px rgba(0,0,0,0.1)"
+                "boxShadow": "0 4px 10px rgba(0,0,0,0.1)",
             },
             children=[
                 html.H2("Login", style={"textAlign": "center", "marginBottom": "30px"}),
@@ -30,14 +33,14 @@ layout = html.Div(
                     id="login-email",
                     type="email",
                     placeholder="Email address",
-                    style={"width": "100%", "padding": "12px", "marginBottom": "15px"}
+                    style={"width": "100%", "padding": "12px", "marginBottom": "15px"},
                 ),
 
                 dcc.Input(
                     id="login-password",
                     type="password",
                     placeholder="Password",
-                    style={"width": "100%", "padding": "12px", "marginBottom": "15px"}
+                    style={"width": "100%", "padding": "12px", "marginBottom": "15px"},
                 ),
 
                 html.Button(
@@ -51,8 +54,8 @@ layout = html.Div(
                         "color": "white",
                         "border": "none",
                         "borderRadius": "5px",
-                        "cursor": "pointer"
-                    }
+                        "cursor": "pointer",
+                    },
                 ),
 
                 html.Div(id="login-error", style={"color": "red", "marginTop": "10px"}),
@@ -60,41 +63,44 @@ layout = html.Div(
                 html.Div(
                     [
                         html.Span("Don't have an account? "),
-                        dcc.Link("Create one", href="/signup")
+                        dcc.Link("Create one", href="/signup"),
                     ],
-                    style={"marginTop": "20px", "textAlign": "center"}
+                    style={"marginTop": "20px", "textAlign": "center"},
                 ),
 
-                dcc.Location(id="login-redirect")
-            ]
-        )
-    ]
+                # Store holds session data safely — not exposed in URL
+                dcc.Store(id="session-store", storage_type="session"),
+            ],
+        ),
+    ],
 )
 
 
 @dash.callback(
     Output("login-error", "children"),
     Output("login-redirect", "href"),
+    Output("session-store", "data"),
     Input("login-btn", "n_clicks"),
     State("login-email", "value"),
     State("login-password", "value"),
+    prevent_initial_call=True,
 )
 def login_user(n_clicks, email, password):
-    if n_clicks is None or n_clicks == 0:
-        raise PreventUpdate
-
     if not email or not password:
-        return "Please fill in all fields.", None
+        return "Please fill in all fields.", None, None
 
     try:
         res = supabase.auth.sign_in_with_password(
             {"email": email, "password": password}
         )
 
-        token = res.session.access_token
-        user_id = res.user.id
+        session_data = {
+            "token": res.session.access_token,
+            "user_id": res.user.id,
+        }
 
-        return "", f"/dashboard?token={token}&user_id={user_id}"
+        return "", "/dashboard", session_data
 
-    except Exception:
-        return "Invalid email or password.", None
+    except Exception as e:
+        print(f"[login_user] {e}")
+        return "Invalid email or password.", None, None
