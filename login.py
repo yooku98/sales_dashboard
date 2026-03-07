@@ -4,7 +4,27 @@ from supabase_client import supabase
 from dash.exceptions import PreventUpdate
 
 dash.register_page(__name__, path="/login")
+login_layout = html.Div([
+    html.H2("Login"),
 
+    dcc.Input(
+        id="login-email",
+        type="email",
+        placeholder="Email"
+    ),
+
+    dcc.Input(
+        id="login-password",
+        type="password",
+        placeholder="Password"
+    ),
+
+    html.Button("Login", id="login-btn"),
+
+    html.Br(),
+
+    dcc.Link("Create account", href="/signup")
+])
 layout = html.Div(
     style={
         "display": "flex",
