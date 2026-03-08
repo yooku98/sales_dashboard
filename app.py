@@ -43,8 +43,9 @@ BTN_BASE = {
 }
 INPUT_STYLE = {
     'width': '100%', 'padding': '10px 12px', 'boxSizing': 'border-box',
-    'border': '2px solid #e5e7eb', 'borderRadius': '8px',
+    'border': '2px solid var(--card-border, #e5e7eb)', 'borderRadius': '8px',
     'fontSize': '1em', 'outline': 'none',
+    'backgroundColor': 'var(--card-bg, white)', 'color': 'var(--text, #1f2937)',
 }
 LABEL_STYLE = {
     'display': 'block', 'marginBottom': '6px', 'fontWeight': '600',
@@ -142,35 +143,63 @@ body {{ margin: 0; padding: 0; -webkit-text-size-adjust: 100%; overflow-x: hidde
   flex-wrap: wrap; gap: 8px; margin-bottom: 12px;
 }}
 
-/* ── Dashboard form inputs in dark mode ── */
+/* ── Dashboard form inputs — fully themed ── */
 #dashboard-wrapper input[type=text],
-#dashboard-wrapper input[type=number],
+#dashboard-wrapper input[type=number] {{
+  background: var(--input-bg, white) !important;
+  color: var(--input-text, #1f2937) !important;
+  border-color: var(--input-border, #e5e7eb) !important;
+}}
 #dashboard-wrapper .DateInput_input {{
-  background: var(--card-bg, white) !important;
-  color: var(--text, #1f2937) !important;
-  border-color: var(--card-border, #d1d5db) !important;
+  background: var(--input-bg, white) !important;
+  color: var(--input-text, #1f2937) !important;
+  border: none !important;
+  font-size: 0.95em !important;
+  padding: 8px 10px !important;
 }}
-#dashboard-wrapper .DateInput,
+#dashboard-wrapper .DateInput {{
+  background: var(--input-bg, white) !important;
+  width: 100% !important;
+}}
 #dashboard-wrapper .SingleDatePickerInput {{
-  background: var(--card-bg, white) !important;
-  border-color: var(--card-border, #d1d5db) !important;
+  background: var(--input-bg, white) !important;
+  border: 2px solid var(--input-border, #e5e7eb) !important;
+  border-radius: 8px !important;
+  width: 100% !important;
+  display: flex !important;
 }}
+#dashboard-wrapper .DayPickerNavigation_button,
 #dashboard-wrapper .DayPicker,
-#dashboard-wrapper .DayPicker_weekHeader,
 #dashboard-wrapper .CalendarMonth,
+#dashboard-wrapper .CalendarMonth_caption,
 #dashboard-wrapper .CalendarMonthGrid {{
   background: var(--card-bg, white) !important;
   color: var(--text, #1f2937) !important;
 }}
+#dashboard-wrapper .CalendarDay__default {{
+  background: var(--card-bg, white) !important;
+  color: var(--text, #1f2937) !important;
+  border-color: var(--input-border, #e5e7eb) !important;
+}}
+#dashboard-wrapper .CalendarDay__selected {{
+  background: #667eea !important;
+  color: white !important;
+}}
 /* Upload drop zone */
 #upload-data {{
-  border-color: var(--card-border, #667eea) !important;
-  background: var(--card-bg, #f9fafb) !important;
+  border-color: var(--input-border, #667eea) !important;
+  background: var(--input-bg, #f9fafb) !important;
+}}
+#upload-data div {{
   color: var(--text, #1f2937) !important;
 }}
 /* Tab row border */
 .tab-row {{
-  border-bottom-color: var(--card-border, #e5e7eb) !important;
+  border-bottom-color: var(--input-border, #e5e7eb) !important;
+}}
+/* Chart card text */
+.chart-card h3, .chart-card p {{
+  color: var(--text, #1f2937) !important;
 }}
 
 /* ── Kill iOS/Chrome autofill yellow background ── */
@@ -454,7 +483,7 @@ def signup_layout():
 
 def dashboard_layout():
     return html.Div(
-        style={'backgroundColor': COLORS['light'], 'minHeight': '100vh', 'margin': '0',
+        style={'minHeight': '100vh', 'margin': '0',
                'fontFamily': "'Segoe UI', Tahoma, Geneva, Verdana, sans-serif"},
         children=[
             dcc.Store(id='stored-data', storage_type='session', data=[]),
@@ -574,7 +603,7 @@ def dashboard_layout():
                 html.Div(id='charts-row', children=[
                     html.Div(className='chart-card', children=[
                         html.H3('\U0001f4c8 Sales Trend',
-                                style={'color': COLORS['dark'], 'margin': '0 0 2px', 'fontSize': '1.1em'}),
+                                style={'color': 'var(--text, #1f2937)', 'margin': '0 0 2px', 'fontSize': '1.1em'}),
                         html.P('Daily totals \u2014 all products',
                                style={'color': '#9ca3af', 'fontSize': '0.78em', 'margin': '0 0 12px'}),
                         html.Div(className='graph-wrap', children=[
@@ -584,7 +613,7 @@ def dashboard_layout():
                     ]),
                     html.Div(className='chart-card', children=[
                         html.H3('\U0001f3c6 Top Products',
-                                style={'color': COLORS['dark'], 'margin': '0 0 2px', 'fontSize': '1.1em'}),
+                                style={'color': 'var(--text, #1f2937)', 'margin': '0 0 2px', 'fontSize': '1.1em'}),
                         html.P(f'Total {CEDI} by product (top 10)',
                                style={'color': '#9ca3af', 'fontSize': '0.78em', 'margin': '0 0 12px'}),
                         html.Div(className='graph-wrap', children=[
@@ -814,7 +843,7 @@ def switch_tabs(_u, _m):
                 'backgroundColor': COLORS['primary'], 'color': 'white'}
     inactive = {**BTN_BASE, 'padding': '10px 20px',
                 'border': f'2px solid {COLORS["primary"]}',
-                'backgroundColor': 'white', 'color': COLORS['primary']}
+                'backgroundColor': 'transparent', 'color': COLORS['primary']}
     if upload_active:
         return {'display': 'block'}, {'display': 'none'}, active, inactive
     return {'display': 'none'}, {'display': 'block'}, inactive, active
@@ -926,7 +955,7 @@ def update_dashboard(stored_data, session, theme):
         ]
 
     if data.empty:
-        line_fig = empty_fig()
+        line_fig = empty_fig(t)
     else:
         clean = data.dropna(subset=['date', 'sales']).copy()
         clean['_d'] = clean['date'].dt.normalize()
@@ -975,13 +1004,17 @@ def update_dashboard(stored_data, session, theme):
             ),
         ])
 
-    # Wrapper style applies background to all card children via CSS vars
     wrapper_style = {
+        'backgroundColor': th['page_bg'],
+        'minHeight': '100vh',
         '--card-bg':     th['card_bg'],
         '--card-border': th['card_border'],
         '--text':        th['text'],
         '--sub-text':    th['sub_text'],
         '--page-bg':     th['page_bg'],
+        '--input-bg':    th['input_bg'],
+        '--input-text':  th['input_text'],
+        '--input-border':th['input_border'],
     }
     return line_fig, bar_fig, stats, tbl, wrapper_style
 
