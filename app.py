@@ -68,6 +68,7 @@ CSS = f"""
 <style>
 *, *::before, *::after {{ box-sizing: border-box; }}
 body {{ margin: 0; padding: 0; -webkit-text-size-adjust: 100%; overflow-x: hidden; }}
+* {{ transition: background-color 0.2s, color 0.2s, border-color 0.2s; }}
 #app-header {{ padding: 28px 24px; text-align: center; }}
 @media (max-width: 500px) {{
   #app-header {{ padding: 18px 14px; }}
@@ -87,16 +88,22 @@ body {{ margin: 0; padding: 0; -webkit-text-size-adjust: 100%; overflow-x: hidde
 }}
 @media (max-width: 760px) {{ #charts-row {{ grid-template-columns: 1fr; }} }}
 .chart-card {{
-  background: white; border-radius: 14px; padding: 20px 20px 12px;
-  box-shadow: 0 2px 10px rgba(0,0,0,0.07); min-width: 0;
+  background: var(--card-bg, white);
+  border: 1px solid var(--card-border, #e5e7eb);
+  border-radius: 14px; padding: 20px 20px 12px;
+  box-shadow: 0 2px 10px rgba(0,0,0,0.12); min-width: 0;
+  transition: background 0.2s;
 }}
 .graph-wrap {{ width: 100%; height: {CHART_H}px; position: relative; }}
 .graph-wrap .js-plotly-plot,
 .graph-wrap .plot-container,
 .graph-wrap .svg-container {{ width: 100% !important; height: 100% !important; }}
 .input-card {{
-  background: white; border-radius: 14px; padding: 24px;
-  box-shadow: 0 2px 10px rgba(0,0,0,0.07); margin-bottom: 18px;
+  background: var(--card-bg, white);
+  border: 1px solid var(--card-border, #e5e7eb);
+  border-radius: 14px; padding: 24px;
+  box-shadow: 0 2px 10px rgba(0,0,0,0.12); margin-bottom: 18px;
+  transition: background 0.2s;
 }}
 #manual-form-grid {{
   display: grid;
@@ -115,8 +122,11 @@ body {{ margin: 0; padding: 0; -webkit-text-size-adjust: 100%; overflow-x: hidde
   border-bottom: 2px solid #e5e7eb; padding-bottom: 12px;
 }}
 .stat-card {{
-  background: white; border-radius: 12px; padding: 18px;
-  box-shadow: 0 2px 8px rgba(0,0,0,0.07); min-width: 0;
+  background: var(--card-bg, white);
+  border: 1px solid var(--card-border, #e5e7eb);
+  border-radius: 12px; padding: 18px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.12); min-width: 0;
+  transition: background 0.2s;
 }}
 @media (max-width: 500px) {{
   .stat-card {{ padding: 14px; }}
@@ -417,6 +427,8 @@ def dashboard_layout():
                'fontFamily': "'Segoe UI', Tahoma, Geneva, Verdana, sans-serif"},
         children=[
             dcc.Store(id='stored-data', storage_type='session', data=[]),
+            # Polls every 60s to detect session expiry and redirect to login
+            dcc.Interval(id='session-check', interval=60_000, n_intervals=0),
 
             html.Div(id='app-header', style={
                 'background': f'linear-gradient(135deg, {COLORS["primary"]} 0%, {COLORS["secondary"]} 100%)',
@@ -458,6 +470,7 @@ def dashboard_layout():
             ]),
             html.Div(id='signout-toast', style={'display': 'none'}),
 
+            html.Div(id='dashboard-wrapper', children=[
             html.Div(id='main-container', children=[
                 html.Div(className='input-card', children=[
                     html.Div(className='tab-row', children=[
@@ -550,10 +563,9 @@ def dashboard_layout():
                     ]),
                 ]),
 
-                html.Div(id='data-table-container',
-                         style={'background': 'white', 'borderRadius': '14px', 'padding': '22px',
-                                'boxShadow': '0 2px 10px rgba(0,0,0,0.07)', 'marginBottom': '24px'}),
+                html.Div(id='data-table-container', style={'marginBottom': '24px'}),
 
+            ]),  # end dashboard-wrapper
                 html.Div(style={'textAlign': 'center', 'padding': '10px 0 24px',
                                 'color': '#9ca3af', 'fontSize': '0.82em'},
                          children=[html.Ul(
@@ -699,6 +711,27 @@ def sign_out(n_clicks, session):
     }
     return None, '/login', goodbye, toast_style
 
+# ── Session expiry check ──────────────────────────────────────────────────────
+@app.callback(
+    Output('url', 'pathname', allow_duplicate=True),
+    Input('session-check',  'n_intervals'),
+    State('session-store',  'data'),
+    State('url',            'pathname'),
+    prevent_initial_call=True,
+)
+def check_session(n, session, pathname):
+    # Only check when on the dashboard
+    if pathname != '/dashboard':
+        raise PreventUpdate
+    if not session or not session.get('token'):
+        return '/login'
+    # Verify token is still valid with Supabase
+    try:
+        supabase.auth.get_user(session['token'])
+        raise PreventUpdate
+    except Exception:
+        return '/login'
+
 # ── Theme toggle callback ─────────────────────────────────────────────────────
 @app.callback(
     Output('theme-store',       'data'),
@@ -830,6 +863,7 @@ def manage_data(add_clicks, clear_clicks, upload_contents,
     Output('product-bar-chart',    'figure'),
     Output('stats-cards',          'children'),
     Output('data-table-container', 'children'),
+    Output('dashboard-wrapper',    'style'),
     Input('stored-data',           'data'),
     Input('session-store',         'data'),
     Input('theme-store',           'data'),
@@ -905,7 +939,15 @@ def update_dashboard(stored_data, session, theme):
             ),
         ])
 
-    return line_fig, bar_fig, stats, tbl
+    # Wrapper style applies background to all card children via CSS vars
+    wrapper_style = {
+        '--card-bg':     th['card_bg'],
+        '--card-border': th['card_border'],
+        '--text':        th['text'],
+        '--sub-text':    th['sub_text'],
+        '--page-bg':     th['page_bg'],
+    }
+    return line_fig, bar_fig, stats, tbl, wrapper_style
 
 
 def _line_chart(daily, t='light'):
