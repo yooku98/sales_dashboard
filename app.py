@@ -56,13 +56,16 @@ AUTH_INPUT = {
     'fontSize': '1em', 'boxSizing': 'border-box',
 }
 AUTH_WRAP = {
-    'display': 'flex', 'height': '100vh',
+    'display': 'flex', 'minHeight': '100dvh',
     'alignItems': 'center', 'justifyContent': 'center',
     'background': '#f4f6f8', 'fontFamily': 'Segoe UI',
+    'padding': '20px', 'boxSizing': 'border-box',
 }
 AUTH_CARD = {
-    'width': '350px', 'padding': '30px', 'borderRadius': '10px',
-    'background': 'white', 'boxShadow': '0 4px 10px rgba(0,0,0,0.1)',
+    'width': '100%', 'maxWidth': '380px', 'padding': '30px',
+    'borderRadius': '10px', 'background': 'white',
+    'boxShadow': '0 4px 10px rgba(0,0,0,0.1)',
+    'boxSizing': 'border-box',
 }
 
 CSS = f"""
@@ -135,10 +138,23 @@ body {{ margin: 0; padding: 0; -webkit-text-size-adjust: 100%; overflow-x: hidde
 </style>
 """
 
+PWA_TAGS = (
+    '<link rel="manifest" href="/assets/manifest.json">\n'
+    '<meta name="theme-color" content="#667eea">\n'
+    '<meta name="apple-mobile-web-app-capable" content="yes">\n'
+    '<meta name="apple-mobile-web-app-status-bar-style" content="default">\n'
+    '<meta name="apple-mobile-web-app-title" content="Sales Dashboard">\n'
+    '<link rel="apple-touch-icon" href="/assets/icons/icon-192.png">\n'
+    '<script>if("serviceWorker" in navigator)'
+    '{navigator.serviceWorker.register("/assets/service_worker.js")}'
+    '</script>\n'
+)
+
 app.index_string = (
     '<!DOCTYPE html>\n<html>\n  <head>\n'
     '    {%metas%}\n    <title>Sales Dashboard</title>\n'
     '    {%favicon%}\n    {%css%}\n'
+    + PWA_TAGS
     + CSS +
     '  </head>\n  <body>\n    {%app_entry%}\n'
     '    <footer>{%config%}{%scripts%}{%renderer%}</footer>\n'
@@ -255,12 +271,13 @@ def login_layout():
         html.Div(style=AUTH_CARD, children=[
             html.H2("Login", style={"textAlign": "center", "marginBottom": "30px"}),
             dcc.Input(id="login-email", type="email", placeholder="Email address",
-                      debounce=False, style=AUTH_INPUT),
+                      debounce=False, autoComplete="email", style=AUTH_INPUT),
             dcc.Input(id="login-password", type="password", placeholder="Password",
-                      debounce=False, style=AUTH_INPUT),
+                      debounce=False, autoComplete="current-password", style=AUTH_INPUT),
             html.Button("Sign In", id="login-btn", n_clicks=0,
-                        style={**BTN_BASE, "width": "100%", "padding": "12px",
-                               "backgroundColor": "#2563eb", "color": "white"}),
+                        style={**BTN_BASE, "width": "100%", "padding": "14px",
+                               "backgroundColor": "#2563eb", "color": "white",
+                               "fontSize": "1em", "marginTop": "4px"}),
             html.Div(id="login-msg", style={"color": "red", "marginTop": "10px", "textAlign": "center"}),
             html.Div([
                 html.Span("Don't have an account? "),
@@ -274,9 +291,9 @@ def signup_layout():
         html.Div(style=AUTH_CARD, children=[
             html.H2("Create Account", style={"textAlign": "center", "marginBottom": "30px"}),
             dcc.Input(id="signup-email", type="email", placeholder="Email address",
-                      debounce=False, style=AUTH_INPUT),
+                      debounce=False, autoComplete="email", style=AUTH_INPUT),
             dcc.Input(id="signup-password", type="password", placeholder="Password (min 6 chars)",
-                      debounce=False, style=AUTH_INPUT),
+                      debounce=False, autoComplete="new-password", style=AUTH_INPUT),
             html.Button("Sign Up", id="signup-btn", n_clicks=0,
                         style={**BTN_BASE, "width": "100%", "padding": "12px",
                                "backgroundColor": "#16a34a", "color": "white"}),
@@ -454,11 +471,16 @@ def render_page(pathname, session):
     Output('session-store', 'data'),
     Output('url',           'pathname'),
     Input('login-btn',      'n_clicks'),
+    Input('login-email',    'value'),
+    Input('login-password', 'value'),
     State('login-email',    'value'),
     State('login-password', 'value'),
     prevent_initial_call=True,
 )
-def login_user(n_clicks, email, password):
+def login_user(btn_clicks, _email_input, _password_input, email, password):
+    # Clear error message whenever user edits either field
+    if ctx.triggered_id in ('login-email', 'login-password'):
+        return "", no_update, no_update
     if not email or not password:
         return "Please fill in all fields.", no_update, no_update
     try:
