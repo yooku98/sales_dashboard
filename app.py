@@ -186,11 +186,9 @@ body {{ margin: 0; padding: 0; -webkit-text-size-adjust: 100%; overflow-x: hidde
   color: white !important;
 }}
 /* Upload drop zone */
-#upload-data {{
+#upload-data, #upload-data > div {{
   border-color: var(--input-border, #667eea) !important;
   background: var(--input-bg, #f9fafb) !important;
-}}
-#upload-data div {{
   color: var(--text, #1f2937) !important;
 }}
 /* Tab row border */
@@ -549,7 +547,7 @@ def dashboard_layout():
                                    style={
                                        'height': '130px', 'borderWidth': '2px', 'borderStyle': 'dashed',
                                        'borderRadius': '10px', 'borderColor': COLORS['primary'],
-                                       'backgroundColor': '#f9fafb', 'cursor': 'pointer',
+                                       'cursor': 'pointer',
                                        'display': 'flex', 'alignItems': 'center', 'justifyContent': 'center',
                                        'textAlign': 'center',
                                    },
@@ -733,10 +731,15 @@ def update_greeting(session):
     # Derive first name: take the part before @ then before any dot/underscore
     if email:
         local = email.split('@')[0]
-        # Split on dot, underscore, or digit boundaries; take first segment
         import re
-        parts = re.split(r'[._\-0-9]+', local)
-        firstname = parts[0].capitalize() if parts else local.capitalize()
+        # Split on common separators first
+        parts = re.split(r'[._\-]+', local)
+        if len(parts) > 1:
+            firstname = parts[0].capitalize()
+        else:
+            # No separator — treat whole local as name, just capitalise it
+            # e.g. willvoks → Willvoks, johndoe → Johndoe
+            firstname = local.capitalize()
         return f'👋 Hello, {firstname}!'
     return '👋 Hello!'
 
@@ -758,8 +761,11 @@ def sign_out(n_clicks, session):
     if email:
         local = email.split('@')[0]
         import re
-        parts = re.split(r'[._\-0-9]+', local)
-        firstname = parts[0].capitalize() if parts else local.capitalize()
+        parts = re.split(r'[._\-]+', local)
+        if len(parts) > 1:
+            firstname = parts[0].capitalize()
+        else:
+            firstname = local.capitalize()
         goodbye = f'👋 Goodbye, {firstname}! You have been signed out.'
     else:
         goodbye = '👋 You have been signed out.'
