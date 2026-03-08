@@ -48,7 +48,7 @@ INPUT_STYLE = {
 }
 LABEL_STYLE = {
     'display': 'block', 'marginBottom': '6px', 'fontWeight': '600',
-    'color': COLORS['dark'], 'fontSize': '0.9em',
+    'color': 'var(--text, #1f2937)', 'fontSize': '0.9em',
 }
 AUTH_INPUT = {}  # Styled via CSS input#id selectors
 AUTH_WRAP = {
@@ -140,6 +140,37 @@ body {{ margin: 0; padding: 0; -webkit-text-size-adjust: 100%; overflow-x: hidde
 .tbl-hdr {{
   display: flex; justify-content: space-between; align-items: center;
   flex-wrap: wrap; gap: 8px; margin-bottom: 12px;
+}}
+
+/* ── Dashboard form inputs in dark mode ── */
+#dashboard-wrapper input[type=text],
+#dashboard-wrapper input[type=number],
+#dashboard-wrapper .DateInput_input {{
+  background: var(--card-bg, white) !important;
+  color: var(--text, #1f2937) !important;
+  border-color: var(--card-border, #d1d5db) !important;
+}}
+#dashboard-wrapper .DateInput,
+#dashboard-wrapper .SingleDatePickerInput {{
+  background: var(--card-bg, white) !important;
+  border-color: var(--card-border, #d1d5db) !important;
+}}
+#dashboard-wrapper .DayPicker,
+#dashboard-wrapper .DayPicker_weekHeader,
+#dashboard-wrapper .CalendarMonth,
+#dashboard-wrapper .CalendarMonthGrid {{
+  background: var(--card-bg, white) !important;
+  color: var(--text, #1f2937) !important;
+}}
+/* Upload drop zone */
+#upload-data {{
+  border-color: var(--card-border, #667eea) !important;
+  background: var(--card-bg, #f9fafb) !important;
+  color: var(--text, #1f2937) !important;
+}}
+/* Tab row border */
+.tab-row {{
+  border-bottom-color: var(--card-border, #e5e7eb) !important;
 }}
 
 /* ── Kill iOS/Chrome autofill yellow background ── */
@@ -484,7 +515,7 @@ def dashboard_layout():
                     ]),
                     html.Div(id='upload-section', children=[
                         html.H3('\U0001f4e4 Upload Your Data',
-                                style={'color': COLORS['dark'], 'fontSize': '1.2em', 'margin': '0 0 14px'}),
+                                style={'color': 'var(--text, #1f2937)', 'fontSize': '1.2em', 'margin': '0 0 14px'}),
                         dcc.Upload(id='upload-data', multiple=False,
                                    style={
                                        'height': '130px', 'borderWidth': '2px', 'borderStyle': 'dashed',
@@ -503,7 +534,7 @@ def dashboard_layout():
                     ]),
                     html.Div(id='manual-section', style={'display': 'none'}, children=[
                         html.H3('\u270f\ufe0f Enter Sales Data',
-                                style={'color': COLORS['dark'], 'fontSize': '1.2em', 'margin': '0 0 14px'}),
+                                style={'color': 'var(--text, #1f2937)', 'fontSize': '1.2em', 'margin': '0 0 14px'}),
                         html.Div(id='manual-form-grid', children=[
                             html.Div([
                                 html.Label('Date', style=LABEL_STYLE),
@@ -673,7 +704,10 @@ def update_greeting(session):
     # Derive first name: take the part before @ then before any dot/underscore
     if email:
         local = email.split('@')[0]
-        firstname = local.replace('.', ' ').replace('_', ' ').split()[0].capitalize()
+        # Split on dot, underscore, or digit boundaries; take first segment
+        import re
+        parts = re.split(r'[._\-0-9]+', local)
+        firstname = parts[0].capitalize() if parts else local.capitalize()
         return f'👋 Hello, {firstname}!'
     return '👋 Hello!'
 
@@ -694,7 +728,9 @@ def sign_out(n_clicks, session):
     email = (session or {}).get('email', '')
     if email:
         local = email.split('@')[0]
-        firstname = local.replace('.', ' ').replace('_', ' ').split()[0].capitalize()
+        import re
+        parts = re.split(r'[._\-0-9]+', local)
+        firstname = parts[0].capitalize() if parts else local.capitalize()
         goodbye = f'👋 Goodbye, {firstname}! You have been signed out.'
     else:
         goodbye = '👋 You have been signed out.'
