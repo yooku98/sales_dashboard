@@ -363,14 +363,32 @@ def dashboard_layout():
             html.Div(id='app-header', style={
                 'background': f'linear-gradient(135deg, {COLORS["primary"]} 0%, {COLORS["secondary"]} 100%)',
                 'color': 'white', 'boxShadow': '0 4px 14px rgba(102,126,234,0.3)',
-                'marginBottom': '18px',
+                'marginBottom': '18px', 'padding': '20px 24px',
             }, children=[
-                html.H1('\U0001f4ca Sales Analytics Dashboard', className='hdr-title',
-                        style={'margin': '0', 'fontSize': '1.9em', 'fontWeight': '700'}),
-                html.P(f'Track sales in Ghana Cedis ({CEDI}) \u2014 data saved to Supabase',
-                       className='hdr-sub',
-                       style={'margin': '6px 0 0', 'fontSize': '0.95em', 'opacity': '0.88'}),
+                html.Div(style={
+                    'display': 'flex', 'justifyContent': 'space-between',
+                    'alignItems': 'center', 'flexWrap': 'wrap', 'gap': '10px',
+                }, children=[
+                    html.H1('\U0001f4ca Sales Analytics Dashboard', className='hdr-title',
+                            style={'margin': '0', 'fontSize': '1.9em', 'fontWeight': '700'}),
+                    html.Button('\U0001f6aa Sign Out', id='signout-btn', n_clicks=0,
+                                style={
+                                    'background': 'rgba(255,255,255,0.2)',
+                                    'color': 'white', 'border': '1.5px solid rgba(255,255,255,0.6)',
+                                    'borderRadius': '20px', 'padding': '7px 16px',
+                                    'fontSize': '0.85em', 'fontWeight': '600', 'cursor': 'pointer',
+                                    'whiteSpace': 'nowrap', 'flexShrink': '0',
+                                }),
+                ]),
+                html.Div(style={'marginTop': '8px'}, children=[
+                    html.Span(id='user-greeting',
+                              style={'fontSize': '0.95em', 'opacity': '0.95', 'fontWeight': '500'}),
+                    html.P(f'Track sales in Ghana Cedis ({CEDI}) \u2014 data saved to Supabase',
+                           className='hdr-sub',
+                           style={'margin': '3px 0 0', 'fontSize': '0.85em', 'opacity': '0.75'}),
+                ]),
             ]),
+            html.Div(id='signout-toast', style={'display': 'none'}),
 
             html.Div(id='main-container', children=[
                 html.Div(className='input-card', children=[
@@ -471,7 +489,7 @@ def dashboard_layout():
                 html.Div(style={'textAlign': 'center', 'padding': '10px 0 24px',
                                 'color': '#9ca3af', 'fontSize': '0.82em'},
                          children=[html.Ul(
-                             html.Li(html.A('Designed by William Thompson', href='https://yooku98.github.io/Portfolio-Website/index.html',
+                             html.Li(html.A('William Thompson', href='https://yooku98.github.io/web',
                                             style={'color': COLORS['primary']})),
                              style={'listStyle': 'none', 'padding': 0, 'margin': 0},
                          )]),
@@ -533,7 +551,7 @@ def login_user(btn_clicks, _email_input, _password_input, email, password):
         return "Please fill in all fields.", no_update, no_update
     try:
         res = supabase.auth.sign_in_with_password({"email": email, "password": password})
-        session_data = {"token": res.session.access_token, "user_id": res.user.id}
+        session_data = {"token": res.session.access_token, "user_id": res.user.id, "email": res.user.email}
         return "", session_data, "/dashboard"
     except Exception as e:
         print(f"[login_user] {e}")
@@ -561,6 +579,56 @@ def signup_user(n_clicks, email, password):
     except Exception as e:
         print(f"[signup_user] {e}")
         return "Signup failed. Email may already be in use.", err
+
+# ── Greeting callback ─────────────────────────────────────────────────────────
+@app.callback(
+    Output('user-greeting', 'children'),
+    Input('session-store',  'data'),
+)
+def update_greeting(session):
+    if not session or not session.get('user_id'):
+        return ''
+    email = session.get('email', '')
+    # Derive first name: take the part before @ then before any dot/underscore
+    if email:
+        local = email.split('@')[0]
+        firstname = local.replace('.', ' ').replace('_', ' ').split()[0].capitalize()
+        return f'👋 Hello, {firstname}!'
+    return '👋 Hello!'
+
+# ── Sign-out callback ──────────────────────────────────────────────────────────
+@app.callback(
+    Output('session-store',   'data',     allow_duplicate=True),
+    Output('url',             'pathname', allow_duplicate=True),
+    Output('signout-toast',   'children'),
+    Output('signout-toast',   'style'),
+    Input('signout-btn',      'n_clicks'),
+    State('session-store',    'data'),
+    prevent_initial_call=True,
+)
+def sign_out(n_clicks, session):
+    if not n_clicks:
+        raise PreventUpdate
+    # Derive first name for goodbye message
+    email = (session or {}).get('email', '')
+    if email:
+        local = email.split('@')[0]
+        firstname = local.replace('.', ' ').replace('_', ' ').split()[0].capitalize()
+        goodbye = f'👋 Goodbye, {firstname}! You have been signed out.'
+    else:
+        goodbye = '👋 You have been signed out.'
+    try:
+        supabase.auth.sign_out()
+    except Exception as e:
+        print(f'[sign_out] {e}')
+    toast_style = {
+        'display': 'block', 'position': 'fixed', 'bottom': '30px', 'left': '50%',
+        'transform': 'translateX(-50%)', 'backgroundColor': COLORS['dark'],
+        'color': 'white', 'padding': '14px 24px', 'borderRadius': '30px',
+        'fontSize': '0.95em', 'fontWeight': '500', 'zIndex': '9999',
+        'boxShadow': '0 4px 20px rgba(0,0,0,0.3)', 'whiteSpace': 'nowrap',
+    }
+    return None, '/login', goodbye, toast_style
 
 # ── Dashboard: tab switcher ────────────────────────────────────────────────────
 @app.callback(
