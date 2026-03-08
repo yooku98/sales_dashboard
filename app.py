@@ -282,34 +282,92 @@ def parse_uploaded_file(contents, filename):
 def fmt_cedi(v):
     return f'{CEDI}{v:,.0f}'
 
-def empty_fig():
+# ── Theme palettes ────────────────────────────────────────────────────────────
+THEME = {
+    'dark': {
+        'bg':        '#0f172a',
+        'plot_bg':   '#0f172a',
+        'paper_bg':  '#0f172a',
+        'grid':      'rgba(255,255,255,0.08)',
+        'grid_dash': 'dash',
+        'line':      '#667eea',
+        'fill':      'rgba(102,126,234,0.18)',
+        'tick':      '#94a3b8',
+        'axis_line': 'rgba(255,255,255,0.1)',
+        'anno':      '#64748b',
+        'card_bg':   '#1e293b',
+        'card_border':'#334155',
+        'text':      '#f1f5f9',
+        'sub_text':  '#94a3b8',
+        'stat_text': '#f1f5f9',
+        'stat_sub':  '#94a3b8',
+        'page_bg':   '#0f172a',
+        'input_bg':  '#1e293b',
+        'input_border': '#475569',
+        'input_text':'#f1f5f9',
+        'toggle_label': '☀️ Light',
+    },
+    'light': {
+        'bg':        'white',
+        'plot_bg':   'white',
+        'paper_bg':  'white',
+        'grid':      '#e5e7eb',
+        'grid_dash': 'solid',
+        'line':      '#667eea',
+        'fill':      'rgba(102,126,234,0.08)',
+        'tick':      '#6b7280',
+        'axis_line': '#e5e7eb',
+        'anno':      '#9ca3af',
+        'card_bg':   'white',
+        'card_border':'#e5e7eb',
+        'text':      '#1f2937',
+        'sub_text':  '#6b7280',
+        'stat_text': '#1f2937',
+        'stat_sub':  '#6b7280',
+        'page_bg':   '#f3f4f6',
+        'input_bg':  'white',
+        'input_border': '#d1d5db',
+        'input_text':'#1f2937',
+        'toggle_label': '🌙 Dark',
+    },
+}
+
+def empty_fig(t='light'):
+    th = THEME[t]
     fig = go.Figure()
     fig.add_annotation(
         text='No data — upload a file or enter records manually',
-        showarrow=False, font=dict(size=13, color='#9ca3af'),
+        showarrow=False, font=dict(size=13, color=th['anno']),
         xref='paper', yref='paper', x=0.5, y=0.5,
     )
     fig.update_layout(
-        plot_bgcolor='white', paper_bgcolor='white',
+        plot_bgcolor=th['plot_bg'], paper_bgcolor=th['paper_bg'],
         height=CHART_H, margin=dict(l=0, r=0, t=0, b=0),
         xaxis=dict(visible=False), yaxis=dict(visible=False),
     )
     return fig
 
-def stat_card(title, value, icon, color):
-    return html.Div(className='stat-card', style={'borderLeft': f'4px solid {color}'}, children=[
+def stat_card(title, value, icon, color, th=None):
+    if th is None:
+        th = THEME['light']
+    return html.Div(className='stat-card', style={
+        'borderLeft': f'4px solid {color}',
+        'backgroundColor': th['card_bg'],
+        'border': f'1px solid {th["card_border"]}',
+        'borderLeft': f'4px solid {color}',
+    }, children=[
         html.Div(style={'display': 'flex', 'justifyContent': 'space-between', 'alignItems': 'center'},
                  children=[
                      html.Div([
-                         html.Div(title, style={'color': '#6b7280', 'fontSize': '0.75em',
+                         html.Div(title, style={'color': th['stat_sub'], 'fontSize': '0.75em',
                                                 'fontWeight': '500', 'textTransform': 'uppercase',
                                                 'letterSpacing': '0.04em', 'marginBottom': '4px'}),
                          html.Div(value, className='stat-val',
-                                  style={'color': COLORS['dark'], 'fontSize': '1.6em',
+                                  style={'color': th['stat_text'], 'fontSize': '1.6em',
                                          'fontWeight': '700', 'lineHeight': '1.1', 'wordBreak': 'break-all'}),
                      ]),
                      html.Div(icon, className='stat-icon',
-                              style={'fontSize': '2em', 'opacity': '0.2', 'flexShrink': '0'}),
+                              style={'fontSize': '2em', 'opacity': '0.25', 'flexShrink': '0'}),
                  ]),
     ])
 
@@ -371,14 +429,24 @@ def dashboard_layout():
                 }, children=[
                     html.H1('\U0001f4ca Sales Analytics Dashboard', className='hdr-title',
                             style={'margin': '0', 'fontSize': '1.9em', 'fontWeight': '700'}),
-                    html.Button('\U0001f6aa Sign Out', id='signout-btn', n_clicks=0,
-                                style={
-                                    'background': 'rgba(255,255,255,0.2)',
-                                    'color': 'white', 'border': '1.5px solid rgba(255,255,255,0.6)',
-                                    'borderRadius': '20px', 'padding': '7px 16px',
-                                    'fontSize': '0.85em', 'fontWeight': '600', 'cursor': 'pointer',
-                                    'whiteSpace': 'nowrap', 'flexShrink': '0',
-                                }),
+                    html.Div(style={'display':'flex','gap':'8px','alignItems':'center'}, children=[
+                        html.Button(id='theme-toggle-btn', n_clicks=0,
+                                    style={
+                                        'background': 'rgba(255,255,255,0.15)',
+                                        'color': 'white', 'border': '1.5px solid rgba(255,255,255,0.5)',
+                                        'borderRadius': '20px', 'padding': '7px 14px',
+                                        'fontSize': '0.85em', 'fontWeight': '600', 'cursor': 'pointer',
+                                        'whiteSpace': 'nowrap', 'flexShrink': '0',
+                                    }),
+                        html.Button('\U0001f6aa Sign Out', id='signout-btn', n_clicks=0,
+                                    style={
+                                        'background': 'rgba(255,255,255,0.2)',
+                                        'color': 'white', 'border': '1.5px solid rgba(255,255,255,0.6)',
+                                        'borderRadius': '20px', 'padding': '7px 16px',
+                                        'fontSize': '0.85em', 'fontWeight': '600', 'cursor': 'pointer',
+                                        'whiteSpace': 'nowrap', 'flexShrink': '0',
+                                    }),
+                    ]),
                 ]),
                 html.Div(style={'marginTop': '8px'}, children=[
                     html.Span(id='user-greeting',
@@ -489,7 +557,7 @@ def dashboard_layout():
                 html.Div(style={'textAlign': 'center', 'padding': '10px 0 24px',
                                 'color': '#9ca3af', 'fontSize': '0.82em'},
                          children=[html.Ul(
-                             html.Li(html.A('Designed by William Thompson', href='https://yooku98.github.io/Portfolio-Website/index.html',
+                             html.Li(html.A('William Thompson', href='https://yooku98.github.io/web',
                                             style={'color': COLORS['primary']})),
                              style={'listStyle': 'none', 'padding': 0, 'margin': 0},
                          )]),
@@ -500,9 +568,10 @@ def dashboard_layout():
 # ── Root layout ────────────────────────────────────────────────────────────────
 # session-store and url live here permanently so they are always in the DOM.
 # page-content is swapped by the router callback.
-app.layout = html.Div([
+app.layout = html.Div(id='app-root', children=[
     dcc.Location(id='url', refresh=False),
     dcc.Store(id='session-store', storage_type='session'),
+    dcc.Store(id='theme-store', storage_type='local', data='dark'),
     html.Div(id='page-content'),
 ])
 
@@ -630,6 +699,37 @@ def sign_out(n_clicks, session):
     }
     return None, '/login', goodbye, toast_style
 
+# ── Theme toggle callback ─────────────────────────────────────────────────────
+@app.callback(
+    Output('theme-store',       'data'),
+    Output('theme-toggle-btn',  'children'),
+    Input('theme-toggle-btn',   'n_clicks'),
+    State('theme-store',        'data'),
+    prevent_initial_call=True,
+)
+def toggle_theme(n, current):
+    new_theme = 'light' if current == 'dark' else 'dark'
+    return new_theme, THEME[new_theme]['toggle_label']
+
+# ── Sync toggle button label on page load ──────────────────────────────────────
+@app.callback(
+    Output('theme-toggle-btn', 'children', allow_duplicate=True),
+    Input('theme-store',       'data'),
+    prevent_initial_call='initial_duplicate',
+)
+def sync_toggle_label(theme):
+    t = theme or 'dark'
+    return THEME[t]['toggle_label']
+
+# ── Apply theme to page background and cards ───────────────────────────────────
+@app.callback(
+    Output('app-root', 'style'),
+    Input('theme-store', 'data'),
+)
+def apply_theme_to_root(theme):
+    t = theme or 'dark'
+    return {'backgroundColor': THEME[t]['page_bg'], 'minHeight': '100vh'}
+
 # ── Dashboard: tab switcher ────────────────────────────────────────────────────
 @app.callback(
     Output('upload-section', 'style'),
@@ -731,27 +831,28 @@ def manage_data(add_clicks, clear_clicks, upload_contents,
     Output('stats-cards',          'children'),
     Output('data-table-container', 'children'),
     Input('stored-data',           'data'),
-    Input('session-store',         'data'),   # also fires on fresh login
+    Input('session-store',         'data'),
+    Input('theme-store',           'data'),
 )
-def update_dashboard(stored_data, session):
+def update_dashboard(stored_data, session, theme):
+    t = theme or 'dark'
+    th = THEME[t]
     user_id = (session or {}).get('user_id')
-    # Always pull from Supabase when logged in — this is what makes
-    # cross-device sync work. stored-data is only a fallback for guests.
     records = load_user_data(user_id) if user_id else (stored_data or [])
     data = records_to_df(records)
 
     if data.empty:
         stats = [html.Div('\U0001f4ed No data yet \u2014 upload a file or enter records manually.',
-                          style={'color': '#6b7280', 'padding': '18px', 'textAlign': 'center',
-                                 'gridColumn': '1 / -1', 'background': 'white',
+                          style={'color': th['sub_text'], 'padding': '18px', 'textAlign': 'center',
+                                 'gridColumn': '1 / -1', 'background': th['card_bg'],
                                  'borderRadius': '12px', 'boxShadow': '0 2px 8px rgba(0,0,0,0.07)'})]
     else:
         s = data['sales'].dropna()
         stats = [
-            stat_card('Total Sales',  fmt_cedi(s.sum()),             '\U0001f4b0', COLORS['success']),
-            stat_card('Average Sale', fmt_cedi(s.mean()),             '\U0001f4ca', COLORS['primary']),
-            stat_card('Products',     str(data['product'].nunique()), '\U0001f3f7\ufe0f', COLORS['warning']),
-            stat_card('Records',      str(len(data)),                 '\U0001f4dd', COLORS['secondary']),
+            stat_card('Total Sales',  fmt_cedi(s.sum()),             '\U0001f4b0', COLORS['success'],  th),
+            stat_card('Average Sale', fmt_cedi(s.mean()),             '\U0001f4ca', COLORS['primary'],  th),
+            stat_card('Products',     str(data['product'].nunique()), '\U0001f3f7\ufe0f', COLORS['warning'],  th),
+            stat_card('Records',      str(len(data)),                 '\U0001f4dd', COLORS['secondary'], th),
         ]
 
     if data.empty:
@@ -761,9 +862,9 @@ def update_dashboard(stored_data, session):
         clean['_d'] = clean['date'].dt.normalize()
         daily = (clean.groupby('_d', as_index=False)['sales']
                       .sum().rename(columns={'_d': 'date'}).sort_values('date'))
-        line_fig = empty_fig() if daily.empty else _line_chart(daily)
+        line_fig = empty_fig(t) if daily.empty else _line_chart(daily, t)
 
-    bar_fig = empty_fig() if data.empty else _bar_chart(data)
+    bar_fig = empty_fig(t) if data.empty else _bar_chart(data, t)
 
     if data.empty:
         tbl = html.Div('\U0001f4ed No data to display.',
@@ -773,10 +874,12 @@ def update_dashboard(stored_data, session):
         disp['date']  = disp['date'].dt.strftime('%Y-%m-%d')
         disp['sales'] = disp['sales'].round(2)
         col_map = {'date': 'Date', 'product': 'Product', 'sales': f'Sales ({CEDI})'}
-        tbl = html.Div([
+        tbl = html.Div(style={'backgroundColor': th['card_bg'], 'borderRadius': '14px',
+                              'padding': '22px', 'boxShadow': '0 2px 10px rgba(0,0,0,0.07)',
+                              'border': f'1px solid {th["card_border"]}'}, children=[
             html.Div(className='tbl-hdr', children=[
                 html.H3('\U0001f4cb All Sales Data',
-                        style={'color': COLORS['dark'], 'margin': '0', 'fontSize': '1.1em'}),
+                        style={'color': th['text'], 'margin': '0', 'fontSize': '1.1em'}),
                 html.Span(f'{len(data)} records',
                           style={'backgroundColor': COLORS['primary'], 'color': 'white',
                                  'padding': '3px 12px', 'borderRadius': '20px',
@@ -792,9 +895,11 @@ def update_dashboard(stored_data, session):
                             'fontSize': '0.88em', 'minWidth': '80px'},
                 style_header={'backgroundColor': COLORS['primary'], 'color': 'white',
                               'fontWeight': '600', 'border': 'none', 'fontSize': '0.85em'},
-                style_data={'border': '1px solid #e5e7eb'},
+                style_data={'backgroundColor': th['card_bg'], 'color': th['text'],
+                            'border': f'1px solid {th["card_border"]}'},
                 style_data_conditional=[
-                    {'if': {'row_index': 'odd'}, 'backgroundColor': '#f9fafb'},
+                    {'if': {'row_index': 'odd'},
+                     'backgroundColor': th['plot_bg']},
                     {'if': {'column_id': 'sales'}, 'textAlign': 'right', 'fontWeight': '600'},
                 ],
             ),
@@ -803,43 +908,69 @@ def update_dashboard(stored_data, session):
     return line_fig, bar_fig, stats, tbl
 
 
-def _line_chart(daily):
+def _line_chart(daily, t='light'):
+    th = THEME[t]
     fig = px.line(daily, x='date', y='sales', labels={'date': '', 'sales': ''})
     fig.update_traces(
-        line_color=COLORS['primary'], line_width=2.5, mode='lines+markers',
-        marker=dict(size=5, color=COLORS['primary'], line=dict(width=2, color='white')),
-        fill='tozeroy', fillcolor='rgba(102,126,234,0.1)',
-        hovertemplate=f'%{{x|%b %d}}<br>{CEDI}%{{y:,.0f}}',
+        line=dict(color=th['line'], width=2.5, shape='spline'),
+        mode='lines+markers',
+        marker=dict(size=7, color=th['plot_bg'],
+                    line=dict(width=2.5, color=th['line'])),
+        fill='tozeroy', fillcolor=th['fill'],
+        hovertemplate=f'%{{x|%b %d}}<br>{CEDI}%{{y:,.0f}}<extra></extra>',
     )
     fig.update_layout(
-        plot_bgcolor='white', paper_bgcolor='white', height=CHART_H,
-        margin=dict(l=60, r=12, t=8, b=40), hovermode='x unified',
-        xaxis=dict(showgrid=False, showline=True, linecolor='#e5e7eb',
-                   tickformat='%b %d', tickfont=dict(size=10), fixedrange=True, title=None),
-        yaxis=dict(showgrid=True, gridcolor='#f0f0f0', zeroline=False,
-                   tickprefix=CEDI, tickfont=dict(size=10), fixedrange=True, title=None),
+        plot_bgcolor=th['plot_bg'], paper_bgcolor=th['paper_bg'], height=CHART_H,
+        margin=dict(l=60, r=16, t=12, b=44), hovermode='x unified',
+        hoverlabel=dict(bgcolor=th['card_bg'], font_color=th['text'],
+                        bordercolor=th['grid']),
+        xaxis=dict(
+            showgrid=True, gridcolor=th['grid'], griddash=th['grid_dash'],
+            showline=False, zeroline=False,
+            tickformat='%b %d', tickfont=dict(size=10, color=th['tick']),
+            fixedrange=True, title=None,
+        ),
+        yaxis=dict(
+            showgrid=True, gridcolor=th['grid'], griddash=th['grid_dash'],
+            zeroline=False, showline=False,
+            tickprefix=CEDI, tickfont=dict(size=10, color=th['tick']),
+            fixedrange=True, title=None,
+        ),
     )
     return fig
 
 
-def _bar_chart(data):
+def _bar_chart(data, t='light'):
+    th = THEME[t]
     ps = (data.dropna(subset=['product', 'sales'])
               .groupby('product', as_index=False)['sales']
               .sum().sort_values('sales', ascending=False).head(10))
     if ps.empty:
-        return empty_fig()
+        return empty_fig(t)
     fig = px.bar(ps, x='product', y='sales', labels={'product': '', 'sales': ''},
                  color='sales',
                  color_continuous_scale=[[0, COLORS['primary']], [1, COLORS['secondary']]])
-    fig.update_traces(hovertemplate=f'%{{x}}<br>{CEDI}%{{y:,.0f}}')
+    fig.update_traces(
+        hovertemplate=f'%{{x}}<br>{CEDI}%{{y:,.0f}}<extra></extra>',
+        marker_line_width=0,
+    )
     fig.update_layout(
-        plot_bgcolor='white', paper_bgcolor='white', height=CHART_H,
-        margin=dict(l=60, r=12, t=8, b=56), coloraxis_showscale=False,
-        xaxis=dict(showgrid=False, showline=True, linecolor='#e5e7eb',
-                   categoryorder='total descending', tickfont=dict(size=10),
-                   fixedrange=True, tickangle=-30, title=None),
-        yaxis=dict(showgrid=True, gridcolor='#f0f0f0', zeroline=False,
-                   tickprefix=CEDI, tickfont=dict(size=10), fixedrange=True, title=None),
+        plot_bgcolor=th['plot_bg'], paper_bgcolor=th['paper_bg'], height=CHART_H,
+        margin=dict(l=60, r=16, t=12, b=56), coloraxis_showscale=False,
+        hoverlabel=dict(bgcolor=th['card_bg'], font_color=th['text'],
+                        bordercolor=th['grid']),
+        xaxis=dict(
+            showgrid=False, showline=False, zeroline=False,
+            categoryorder='total descending',
+            tickfont=dict(size=10, color=th['tick']),
+            fixedrange=True, tickangle=-30, title=None,
+        ),
+        yaxis=dict(
+            showgrid=True, gridcolor=th['grid'], griddash=th['grid_dash'],
+            zeroline=False, showline=False,
+            tickprefix=CEDI, tickfont=dict(size=10, color=th['tick']),
+            fixedrange=True, title=None,
+        ),
     )
     return fig
 
