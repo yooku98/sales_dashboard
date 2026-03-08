@@ -615,10 +615,12 @@ def manage_data(add_clicks, clear_clicks, upload_contents,
     Output('stats-cards',          'children'),
     Output('data-table-container', 'children'),
     Input('stored-data',           'data'),
-    State('session-store',         'data'),
+    Input('session-store',         'data'),   # also fires on fresh login
 )
 def update_dashboard(stored_data, session):
     user_id = (session or {}).get('user_id')
+    # Always pull from Supabase when logged in — this is what makes
+    # cross-device sync work. stored-data is only a fallback for guests.
     records = load_user_data(user_id) if user_id else (stored_data or [])
     data = records_to_df(records)
 
