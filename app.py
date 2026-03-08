@@ -50,11 +50,7 @@ LABEL_STYLE = {
     'display': 'block', 'marginBottom': '6px', 'fontWeight': '600',
     'color': COLORS['dark'], 'fontSize': '0.9em',
 }
-AUTH_INPUT = {
-    'width': '100%', 'padding': '12px', 'marginBottom': '15px',
-    'border': '1px solid #d1d5db', 'borderRadius': '5px',
-    'fontSize': '1em', 'boxSizing': 'border-box',
-}
+AUTH_INPUT = {}  # Styled via CSS input#id selectors
 AUTH_WRAP = {
     'display': 'flex', 'minHeight': '100dvh',
     'alignItems': 'center', 'justifyContent': 'center',
@@ -134,6 +130,58 @@ body {{ margin: 0; padding: 0; -webkit-text-size-adjust: 100%; overflow-x: hidde
 .tbl-hdr {{
   display: flex; justify-content: space-between; align-items: center;
   flex-wrap: wrap; gap: 8px; margin-bottom: 12px;
+}}
+
+/* ── Kill iOS/Chrome autofill yellow background ── */
+input:-webkit-autofill,
+input:-webkit-autofill:hover,
+input:-webkit-autofill:focus,
+input:-webkit-autofill:active {{
+  -webkit-box-shadow: 0 0 0 40px white inset !important;
+  -webkit-text-fill-color: #1f2937 !important;
+  caret-color: #1f2937;
+  transition: background-color 9999s ease-in-out 0s;
+}}
+
+/* ── Auth inputs — target the actual <input> Dash renders inside the wrapper ── */
+input#login-email, input#login-password,
+input#signup-email, input#signup-password {{
+  display: block !important;
+  width: 100% !important;
+  padding: 16px 14px !important;
+  margin: 0 0 16px 0 !important;
+  border: 1.5px solid #d1d5db !important;
+  border-radius: 8px !important;
+  font-size: 16px !important;
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif !important;
+  color: #1f2937 !important;
+  background: white !important;
+  box-sizing: border-box !important;
+  outline: none !important;
+  -webkit-appearance: none;
+  appearance: none;
+  line-height: 1.5 !important;
+  min-height: 52px !important;
+}}
+input#login-email:focus, input#login-password:focus,
+input#signup-email:focus, input#signup-password:focus {{
+  border-color: #667eea !important;
+  box-shadow: 0 0 0 3px rgba(102,126,234,0.15) !important;
+}}
+
+/* ── Auth buttons ── */
+#login-btn, #signup-btn {{
+  display: block;
+  width: 100% !important;
+  padding: 16px !important;
+  border: none !important;
+  border-radius: 8px !important;
+  font-size: 16px !important;
+  font-weight: 600 !important;
+  cursor: pointer !important;
+  -webkit-appearance: none;
+  appearance: none;
+  min-height: 52px !important;
 }}
 </style>
 """
