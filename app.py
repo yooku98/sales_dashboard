@@ -9,12 +9,12 @@ import plotly.graph_objects as go
 from datetime import datetime
 from supabase import create_client, Client
 
-# ── Supabase ──────────────────────────────────────────────────────────────────
+# ── Supabase ───────────────────────────────────────────────────────────────────
 SUPABASE_URL = os.environ.get("SUPABASE_URL", "")
 SUPABASE_KEY = os.environ.get("SUPABASE_KEY", "")
 supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
 
-# ── App ───────────────────────────────────────────────────────────────────────
+# ── App ────────────────────────────────────────────────────────────────────────
 CEDI = '\u20b5'
 
 app = Dash(
@@ -28,19 +28,14 @@ app = Dash(
 )
 server = app.server
 
-# ── Colours / constants ───────────────────────────────────────────────────────
+# ── Design tokens ──────────────────────────────────────────────────────────────
 COLORS = {
-    'primary':   '#667eea',
-    'secondary': '#764ba2',
-    'success':   '#10b981',
-    'warning':   '#f59e0b',
-    'danger':    '#ef4444',
-    'light':     '#f3f4f6',
-    'dark':      '#1f2937',
-    'white':     '#ffffff',
+    'primary':   '#667eea', 'secondary': '#764ba2',
+    'success':   '#10b981', 'warning':   '#f59e0b',
+    'danger':    '#ef4444', 'light':     '#f3f4f6',
+    'dark':      '#1f2937', 'white':     '#ffffff',
 }
 CHART_H = 320
-
 BTN_BASE = {
     'border': 'none', 'borderRadius': '8px', 'cursor': 'pointer',
     'fontSize': '0.95em', 'fontWeight': '600', 'touchAction': 'manipulation',
@@ -54,6 +49,20 @@ INPUT_STYLE = {
 LABEL_STYLE = {
     'display': 'block', 'marginBottom': '6px', 'fontWeight': '600',
     'color': COLORS['dark'], 'fontSize': '0.9em',
+}
+AUTH_INPUT = {
+    'width': '100%', 'padding': '12px', 'marginBottom': '15px',
+    'border': '1px solid #d1d5db', 'borderRadius': '5px',
+    'fontSize': '1em', 'boxSizing': 'border-box',
+}
+AUTH_WRAP = {
+    'display': 'flex', 'height': '100vh',
+    'alignItems': 'center', 'justifyContent': 'center',
+    'background': '#f4f6f8', 'fontFamily': 'Segoe UI',
+}
+AUTH_CARD = {
+    'width': '350px', 'padding': '30px', 'borderRadius': '10px',
+    'background': 'white', 'boxShadow': '0 4px 10px rgba(0,0,0,0.1)',
 }
 
 CSS = f"""
@@ -69,20 +78,17 @@ body {{ margin: 0; padding: 0; -webkit-text-size-adjust: 100%; overflow-x: hidde
 #main-container {{ max-width: 1400px; margin: 0 auto; padding: 0 20px; }}
 @media (max-width: 500px) {{ #main-container {{ padding: 0 12px; }} }}
 #stats-cards {{
-  display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
+  display: grid; grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 14px; margin-bottom: 18px;
 }}
 @media (max-width: 860px) {{ #stats-cards {{ grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }} }}
 #charts-row {{
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  display: grid; grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 16px; margin-bottom: 18px;
 }}
 @media (max-width: 760px) {{ #charts-row {{ grid-template-columns: 1fr; }} }}
 .chart-card {{
-  background: white; border-radius: 14px;
-  padding: 20px 20px 12px 20px;
+  background: white; border-radius: 14px; padding: 20px 20px 12px;
   box-shadow: 0 2px 10px rgba(0,0,0,0.07); min-width: 0;
 }}
 .graph-wrap {{ width: 100%; height: {CHART_H}px; position: relative; }}
@@ -105,10 +111,9 @@ body {{ margin: 0; padding: 0; -webkit-text-size-adjust: 100%; overflow-x: hidde
   #add-data-btn   {{ width: 100%; }}
   #clear-data-btn {{ width: 100%; margin-top: 6px; }}
 }}
-.tab-row {{ display: flex; gap: 10px; margin-bottom: 20px; border-bottom: 2px solid #e5e7eb; padding-bottom: 12px; }}
-@media (max-width: 420px) {{
-  .tab-row {{ gap: 8px; }}
-  #tab-upload, #tab-manual {{ flex: 1; text-align: center; padding: 9px 6px !important; font-size: 0.85em !important; }}
+.tab-row {{
+  display: flex; gap: 10px; margin-bottom: 20px;
+  border-bottom: 2px solid #e5e7eb; padding-bottom: 12px;
 }}
 .stat-card {{
   background: white; border-radius: 12px; padding: 18px;
@@ -123,14 +128,10 @@ body {{ margin: 0; padding: 0; -webkit-text-size-adjust: 100%; overflow-x: hidde
 .dash-cell div              {{ white-space: nowrap !important; }}
 .DateInput, .DateInput_input, .SingleDatePickerInput {{ width: 100% !important; }}
 #upload-data {{ width: 100%; box-sizing: border-box; }}
-@media (max-width: 500px) {{
-  #upload-data {{ height: 110px !important; }}
-  .upl-icon    {{ font-size: 2em !important; }}
-  .upl-main    {{ font-size: 0.95em !important; }}
-  .upl-sub     {{ font-size: 0.78em !important; }}
+.tbl-hdr {{
+  display: flex; justify-content: space-between; align-items: center;
+  flex-wrap: wrap; gap: 8px; margin-bottom: 12px;
 }}
-.tbl-hdr {{ display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px; margin-bottom: 12px; }}
-@media (max-width: 420px) {{ .tbl-hdr {{ flex-direction: column; align-items: flex-start; }} }}
 </style>
 """
 
@@ -144,11 +145,11 @@ app.index_string = (
     '  </body>\n</html>'
 )
 
-# ── Supabase helpers ──────────────────────────────────────────────────────────
+# ── Supabase helpers ───────────────────────────────────────────────────────────
 def load_user_data(user_id: str) -> list:
     try:
         res = supabase.table("sales_records").select("*").eq("user_id", user_id).execute()
-        return res.data if res.data else []
+        return res.data or []
     except Exception as e:
         print(f"[load_user_data] {e}")
         return []
@@ -157,10 +158,8 @@ def insert_rows(user_id: str, df: pd.DataFrame):
     for _, row in df.iterrows():
         try:
             supabase.table("sales_records").insert({
-                "user_id": user_id,
-                "date":    row["date"],
-                "product": row["product"],
-                "sales":   row["sales"],
+                "user_id": user_id, "date": row["date"],
+                "product": row["product"], "sales": row["sales"],
             }).execute()
         except Exception as e:
             print(f"[insert_rows] {e}")
@@ -171,7 +170,7 @@ def delete_user_data(user_id: str):
     except Exception as e:
         print(f"[delete_user_data] {e}")
 
-# ── Data helpers ──────────────────────────────────────────────────────────────
+# ── Data helpers ───────────────────────────────────────────────────────────────
 def clean_col_names(df):
     df.columns = df.columns.str.replace(r'[\r\n]', '', regex=True).str.strip().str.lower()
     return df
@@ -186,7 +185,7 @@ def records_to_df(records):
             df[col] = None
     df = df[['date', 'product', 'sales']].copy()
     df['sales'] = pd.to_numeric(df['sales'], errors='coerce')
-    df['date']  = pd.to_datetime(df['date'],  errors='coerce')
+    df['date']  = pd.to_datetime(df['date'], errors='coerce')
     df = df.dropna(subset=['sales'])
     df = df[df['product'].notna() & (df['product'].astype(str).str.strip() != '')]
     return df.reset_index(drop=True)
@@ -250,19 +249,7 @@ def stat_card(title, value, icon, color):
                  ]),
     ])
 
-# ── Page layouts ──────────────────────────────────────────────────────────────
-AUTH_CARD = {
-    "width": "350px", "padding": "30px", "borderRadius": "10px",
-    "background": "white", "boxShadow": "0 4px 10px rgba(0,0,0,0.1)",
-}
-AUTH_WRAP = {
-    "display": "flex", "height": "100vh",
-    "alignItems": "center", "justifyContent": "center",
-    "background": "#f4f6f8", "fontFamily": "Segoe UI",
-}
-AUTH_INPUT = {"width": "100%", "padding": "12px", "marginBottom": "15px",
-              "border": "1px solid #d1d5db", "borderRadius": "5px", "fontSize": "1em"}
-
+# ── Page layouts ───────────────────────────────────────────────────────────────
 def login_layout():
     return html.Div(style=AUTH_WRAP, children=[
         html.Div(style=AUTH_CARD, children=[
@@ -273,7 +260,7 @@ def login_layout():
                       debounce=False, style=AUTH_INPUT),
             html.Button("Sign In", id="login-btn", n_clicks=0,
                         style={**BTN_BASE, "width": "100%", "padding": "12px",
-                               "background": "#2563eb", "color": "white"}),
+                               "backgroundColor": "#2563eb", "color": "white"}),
             html.Div(id="login-msg", style={"color": "red", "marginTop": "10px", "textAlign": "center"}),
             html.Div([
                 html.Span("Don't have an account? "),
@@ -292,7 +279,7 @@ def signup_layout():
                       debounce=False, style=AUTH_INPUT),
             html.Button("Sign Up", id="signup-btn", n_clicks=0,
                         style={**BTN_BASE, "width": "100%", "padding": "12px",
-                               "background": "#16a34a", "color": "white"}),
+                               "backgroundColor": "#16a34a", "color": "white"}),
             html.Div(id="signup-msg", style={"marginTop": "10px", "textAlign": "center"}),
             html.Div([
                 html.Span("Already have an account? "),
@@ -303,8 +290,8 @@ def signup_layout():
 
 def dashboard_layout():
     return html.Div(
-        style={'backgroundColor': COLORS['light'], 'minHeight': '100vh',
-               'margin': '0', 'fontFamily': "'Segoe UI', Tahoma, Geneva, Verdana, sans-serif"},
+        style={'backgroundColor': COLORS['light'], 'minHeight': '100vh', 'margin': '0',
+               'fontFamily': "'Segoe UI', Tahoma, Geneva, Verdana, sans-serif"},
         children=[
             dcc.Store(id='stored-data', storage_type='session', data=[]),
 
@@ -340,14 +327,13 @@ def dashboard_layout():
                                        'borderRadius': '10px', 'borderColor': COLORS['primary'],
                                        'backgroundColor': '#f9fafb', 'cursor': 'pointer',
                                        'display': 'flex', 'alignItems': 'center', 'justifyContent': 'center',
-                                       'textAlign': 'center', 'WebkitTapHighlightColor': 'transparent',
+                                       'textAlign': 'center',
                                    },
                                    children=html.Div([
-                                       html.Div('\U0001f4c1', className='upl-icon',
-                                                style={'fontSize': '2.2em', 'marginBottom': '6px'}),
-                                       html.Div('Drag and Drop or Tap to Select', className='upl-main',
+                                       html.Div('\U0001f4c1', style={'fontSize': '2.2em', 'marginBottom': '6px'}),
+                                       html.Div('Drag and Drop or Tap to Select',
                                                 style={'fontSize': '1em', 'fontWeight': '600'}),
-                                       html.Div('CSV or Excel (.xlsx)', className='upl-sub',
+                                       html.Div('CSV or Excel (.xlsx)',
                                                 style={'fontSize': '0.82em', 'color': '#6b7280', 'marginTop': '3px'}),
                                    ])),
                     ]),
@@ -428,41 +414,48 @@ def dashboard_layout():
         ],
     )
 
-# ── Root layout — only stores and router live here permanently ────────────────
+# ── Root layout ────────────────────────────────────────────────────────────────
+# session-store and url live here permanently so they are always in the DOM.
+# page-content is swapped by the router callback.
 app.layout = html.Div([
     dcc.Location(id='url', refresh=False),
     dcc.Store(id='session-store', storage_type='session'),
     html.Div(id='page-content'),
 ])
 
-# ── Router ────────────────────────────────────────────────────────────────────
+# ── Router ─────────────────────────────────────────────────────────────────────
 @app.callback(
     Output('page-content', 'children'),
     Input('url', 'pathname'),
     State('session-store', 'data'),
 )
 def render_page(pathname, session):
-    authenticated = session and session.get('user_id')
+    authenticated = bool(session and session.get('user_id'))
 
     if pathname == '/signup':
         return signup_layout()
 
     if pathname == '/dashboard':
         if not authenticated:
-            return dcc.Location(id='force-login', href='/login', refresh=True)
+            # Not logged in — bounce back to login
+            return dcc.Location(id='auth-redirect', href='/login', refresh=True)
         return dashboard_layout()
 
-    # /login and anything else
+    # /login or anything else
     return login_layout()
 
-# ── Auth callbacks ────────────────────────────────────────────────────────────
+# ── Login callback ─────────────────────────────────────────────────────────────
+# Writes the session and updates the URL pathname in one atomic step.
+# Because url has refresh=False, Dash re-renders page-content via render_page
+# without a full page reload — session-store is already written so the
+# auth check in render_page passes immediately.
 @app.callback(
-    Output('login-msg',       'children'),
-    Output('session-store',   'data'),
-    Output('url',             'pathname'),
-    Input('login-btn',        'n_clicks'),
-    State('login-email',      'value'),
-    State('login-password',   'value'),
+    Output('login-msg',     'children'),
+    Output('session-store', 'data'),
+    Output('url',           'pathname'),
+    Input('login-btn',      'n_clicks'),
+    State('login-email',    'value'),
+    State('login-password', 'value'),
     prevent_initial_call=True,
 )
 def login_user(n_clicks, email, password):
@@ -476,31 +469,30 @@ def login_user(n_clicks, email, password):
         print(f"[login_user] {e}")
         return "Invalid email or password.", no_update, no_update
 
-
+# ── Signup callback ────────────────────────────────────────────────────────────
 @app.callback(
-    Output('signup-msg',      'children'),
-    Output('signup-msg',      'style'),
-    Output('url',             'pathname', allow_duplicate=True),
-    Input('signup-btn',       'n_clicks'),
-    State('signup-email',     'value'),
-    State('signup-password',  'value'),
+    Output('signup-msg',   'children'),
+    Output('signup-msg',   'style'),
+    Input('signup-btn',    'n_clicks'),
+    State('signup-email',  'value'),
+    State('signup-password', 'value'),
     prevent_initial_call=True,
 )
 def signup_user(n_clicks, email, password):
-    err_style = {"color": "red",   "marginTop": "10px", "textAlign": "center"}
-    ok_style  = {"color": "green", "marginTop": "10px", "textAlign": "center"}
+    err = {"color": "red",   "marginTop": "10px", "textAlign": "center"}
+    ok  = {"color": "green", "marginTop": "10px", "textAlign": "center"}
     if not email or not password:
-        return "Please fill in all fields.", err_style, no_update
+        return "Please fill in all fields.", err
     if len(password) < 6:
-        return "Password must be at least 6 characters.", err_style, no_update
+        return "Password must be at least 6 characters.", err
     try:
         supabase.auth.sign_up({"email": email, "password": password})
-        return "Account created! Check your email to verify.", ok_style, no_update
+        return "Account created! Check your email to verify.", ok
     except Exception as e:
         print(f"[signup_user] {e}")
-        return "Signup failed. Email may already be in use.", err_style, no_update
+        return "Signup failed. Email may already be in use.", err
 
-# ── Dashboard callbacks ───────────────────────────────────────────────────────
+# ── Dashboard: tab switcher ────────────────────────────────────────────────────
 @app.callback(
     Output('upload-section', 'style'),
     Output('manual-section', 'style'),
@@ -520,7 +512,7 @@ def switch_tabs(_u, _m):
         return {'display': 'block'}, {'display': 'none'}, active, inactive
     return {'display': 'none'}, {'display': 'block'}, inactive, active
 
-
+# ── Dashboard: data management ────────────────────────────────────────────────
 @app.callback(
     Output('stored-data',    'data'),
     Output('status-message', 'children'),
@@ -594,7 +586,7 @@ def manage_data(add_clicks, clear_clicks, upload_contents,
 
     raise PreventUpdate
 
-
+# ── Dashboard: charts + table ─────────────────────────────────────────────────
 @app.callback(
     Output('sales-line-chart',     'figure'),
     Output('product-bar-chart',    'figure'),
@@ -629,47 +621,9 @@ def update_dashboard(stored_data, session):
         clean['_d'] = clean['date'].dt.normalize()
         daily = (clean.groupby('_d', as_index=False)['sales']
                       .sum().rename(columns={'_d': 'date'}).sort_values('date'))
-        if daily.empty:
-            line_fig = empty_fig()
-        else:
-            line_fig = px.line(daily, x='date', y='sales', labels={'date': '', 'sales': ''})
-            line_fig.update_traces(
-                line_color=COLORS['primary'], line_width=2.5, mode='lines+markers',
-                marker=dict(size=5, color=COLORS['primary'], line=dict(width=2, color='white')),
-                fill='tozeroy', fillcolor='rgba(102,126,234,0.1)',
-                hovertemplate=f'%{{x|%b %d}}<br>{CEDI}%{{y:,.0f}}',
-            )
-            line_fig.update_layout(
-                plot_bgcolor='white', paper_bgcolor='white', height=CHART_H,
-                margin=dict(l=60, r=12, t=8, b=40), hovermode='x unified',
-                xaxis=dict(showgrid=False, showline=True, linecolor='#e5e7eb',
-                           tickformat='%b %d', tickfont=dict(size=10), fixedrange=True, title=None),
-                yaxis=dict(showgrid=True, gridcolor='#f0f0f0', zeroline=False,
-                           tickprefix=CEDI, tickfont=dict(size=10), fixedrange=True, title=None),
-            )
+        line_fig = empty_fig() if daily.empty else _line_chart(daily)
 
-    if data.empty:
-        bar_fig = empty_fig()
-    else:
-        ps = (data.dropna(subset=['product', 'sales'])
-                  .groupby('product', as_index=False)['sales']
-                  .sum().sort_values('sales', ascending=False).head(10))
-        if ps.empty:
-            bar_fig = empty_fig()
-        else:
-            bar_fig = px.bar(ps, x='product', y='sales', labels={'product': '', 'sales': ''},
-                             color='sales',
-                             color_continuous_scale=[[0, COLORS['primary']], [1, COLORS['secondary']]])
-            bar_fig.update_traces(hovertemplate=f'%{{x}}<br>{CEDI}%{{y:,.0f}}')
-            bar_fig.update_layout(
-                plot_bgcolor='white', paper_bgcolor='white', height=CHART_H,
-                margin=dict(l=60, r=12, t=8, b=56), coloraxis_showscale=False,
-                xaxis=dict(showgrid=False, showline=True, linecolor='#e5e7eb',
-                           categoryorder='total descending', tickfont=dict(size=10),
-                           fixedrange=True, tickangle=-30, title=None),
-                yaxis=dict(showgrid=True, gridcolor='#f0f0f0', zeroline=False,
-                           tickprefix=CEDI, tickfont=dict(size=10), fixedrange=True, title=None),
-            )
+    bar_fig = empty_fig() if data.empty else _bar_chart(data)
 
     if data.empty:
         tbl = html.Div('\U0001f4ed No data to display.',
@@ -689,8 +643,7 @@ def update_dashboard(stored_data, session):
                                  'fontSize': '0.8em', 'fontWeight': '600'}),
             ]),
             dash_table.DataTable(
-                id='data-table',
-                data=disp.to_dict('records'),
+                id='data-table', data=disp.to_dict('records'),
                 columns=[{'name': col_map.get(c, c.title()), 'id': c} for c in disp.columns],
                 page_size=10, sort_action='native', filter_action='native',
                 style_table={'overflowX': 'auto', 'minWidth': '100%'},
@@ -708,6 +661,47 @@ def update_dashboard(stored_data, session):
         ])
 
     return line_fig, bar_fig, stats, tbl
+
+
+def _line_chart(daily):
+    fig = px.line(daily, x='date', y='sales', labels={'date': '', 'sales': ''})
+    fig.update_traces(
+        line_color=COLORS['primary'], line_width=2.5, mode='lines+markers',
+        marker=dict(size=5, color=COLORS['primary'], line=dict(width=2, color='white')),
+        fill='tozeroy', fillcolor='rgba(102,126,234,0.1)',
+        hovertemplate=f'%{{x|%b %d}}<br>{CEDI}%{{y:,.0f}}',
+    )
+    fig.update_layout(
+        plot_bgcolor='white', paper_bgcolor='white', height=CHART_H,
+        margin=dict(l=60, r=12, t=8, b=40), hovermode='x unified',
+        xaxis=dict(showgrid=False, showline=True, linecolor='#e5e7eb',
+                   tickformat='%b %d', tickfont=dict(size=10), fixedrange=True, title=None),
+        yaxis=dict(showgrid=True, gridcolor='#f0f0f0', zeroline=False,
+                   tickprefix=CEDI, tickfont=dict(size=10), fixedrange=True, title=None),
+    )
+    return fig
+
+
+def _bar_chart(data):
+    ps = (data.dropna(subset=['product', 'sales'])
+              .groupby('product', as_index=False)['sales']
+              .sum().sort_values('sales', ascending=False).head(10))
+    if ps.empty:
+        return empty_fig()
+    fig = px.bar(ps, x='product', y='sales', labels={'product': '', 'sales': ''},
+                 color='sales',
+                 color_continuous_scale=[[0, COLORS['primary']], [1, COLORS['secondary']]])
+    fig.update_traces(hovertemplate=f'%{{x}}<br>{CEDI}%{{y:,.0f}}')
+    fig.update_layout(
+        plot_bgcolor='white', paper_bgcolor='white', height=CHART_H,
+        margin=dict(l=60, r=12, t=8, b=56), coloraxis_showscale=False,
+        xaxis=dict(showgrid=False, showline=True, linecolor='#e5e7eb',
+                   categoryorder='total descending', tickfont=dict(size=10),
+                   fixedrange=True, tickangle=-30, title=None),
+        yaxis=dict(showgrid=True, gridcolor='#f0f0f0', zeroline=False,
+                   tickprefix=CEDI, tickfont=dict(size=10), fixedrange=True, title=None),
+    )
+    return fig
 
 
 if __name__ == '__main__':
