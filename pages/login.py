@@ -14,7 +14,9 @@ layout = html.Div(
         "fontFamily": "Segoe UI",
     },
     children=[
-        dcc.Location(id="login-redirect"),
+        # refresh=True forces a full page reload after redirect,
+        # so the new session-store value is picked up by app.layout
+        dcc.Location(id="login-redirect", refresh=True),
 
         html.Div(
             style={
@@ -31,6 +33,7 @@ layout = html.Div(
                     id="login-email",
                     type="email",
                     placeholder="Email address",
+                    debounce=False,
                     style={"width": "100%", "padding": "12px", "marginBottom": "15px"},
                 ),
 
@@ -38,6 +41,7 @@ layout = html.Div(
                     id="login-password",
                     type="password",
                     placeholder="Password",
+                    debounce=False,
                     style={"width": "100%", "padding": "12px", "marginBottom": "15px"},
                 ),
 
@@ -66,7 +70,7 @@ layout = html.Div(
                     style={"marginTop": "20px", "textAlign": "center"},
                 ),
 
-                # Session store — token and user_id stored here, never in URL
+                # Local session-store — written on login, read by dashboard
                 dcc.Store(id="session-store", storage_type="session"),
             ],
         ),
@@ -85,7 +89,7 @@ layout = html.Div(
 )
 def login_user(n_clicks, email, password):
     if not email or not password:
-        return "Please fill in all fields.", None, None
+        return "Please fill in all fields.", dash.no_update, dash.no_update
 
     try:
         res = supabase.auth.sign_in_with_password(
@@ -101,4 +105,4 @@ def login_user(n_clicks, email, password):
 
     except Exception as e:
         print(f"[login_user] {e}")
-        return "Invalid email or password.", None, None
+        return "Invalid email or password.", dash.no_update, dash.no_update

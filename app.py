@@ -1,3 +1,4 @@
+import dash
 import base64
 import io
 import os
@@ -439,26 +440,8 @@ def dashboard_layout():
 app.layout = html.Div([
     dcc.Location(id='url', refresh=False),
     dcc.Store(id='session-store', storage_type='session'),
-    html.Div(id='page-content'),
+    dash.page_container,
 ])
-
-@app.callback(
-    Output("page-content", "children"),
-    Input("url", "pathname"),
-    State("session-store", "data"),
-)
-def route_pages(pathname, session):
-    # Protect dashboard — redirect to login if no valid session
-    if pathname == "/dashboard":
-        if not session or not session.get("user_id"):
-            return dcc.Location(href="/login", id="auth-redirect")
-        return dashboard_layout()
-
-    if pathname == "/signup":
-        return dcc.Location(href="/signup", id="page-redirect")
-
-    # Default: show login
-    return dcc.Location(href="/login", id="page-redirect")
 
 
 
