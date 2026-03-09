@@ -638,7 +638,7 @@ def dashboard_layout():
                 html.Div(style={'textAlign': 'center', 'padding': '10px 0 24px',
                                 'color': '#9ca3af', 'fontSize': '0.82em'},
                          children=[html.Ul(
-                             html.Li(html.A('William Thompson', href='https://yooku98.github.io/web',
+                             html.Li(html.A('Designed by William Thompson', href='https://yooku98.github.io/Portfolio-Website/index.html',
                                             style={'color': COLORS['primary']})),
                              style={'listStyle': 'none', 'padding': 0, 'margin': 0},
                          )]),
