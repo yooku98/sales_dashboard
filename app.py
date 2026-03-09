@@ -195,6 +195,17 @@ body {{ margin: 0; padding: 0; -webkit-text-size-adjust: 100%; overflow-x: hidde
 .tab-row {{
   border-bottom-color: var(--input-border, #e5e7eb) !important;
 }}
+/* DataTable filter row */
+.dash-filter input {{
+  background: var(--input-bg, white) !important;
+  color: var(--input-text, #1f2937) !important;
+  border: 1px solid var(--input-border, #e5e7eb) !important;
+  border-radius: 4px !important;
+  padding: 4px 8px !important;
+}}
+.dash-filter {{
+  background: var(--input-bg, white) !important;
+}}
 /* Chart card text */
 .chart-card h3, .chart-card p {{
   color: var(--text, #1f2937) !important;
@@ -1002,6 +1013,13 @@ def update_dashboard(stored_data, session, theme):
                               'fontWeight': '600', 'border': 'none', 'fontSize': '0.85em'},
                 style_data={'backgroundColor': th['card_bg'], 'color': th['text'],
                             'border': f'1px solid {th["card_border"]}'},
+                style_filter={
+                    'backgroundColor': th['input_bg'],
+                    'color': th['input_text'],
+                    'border': f'1px solid {th["input_border"]}',
+                    'fontFamily': "'Segoe UI', Tahoma, Geneva, Verdana, sans-serif",
+                    'fontSize': '0.85em',
+                },
                 style_data_conditional=[
                     {'if': {'row_index': 'odd'},
                      'backgroundColor': th['plot_bg']},
