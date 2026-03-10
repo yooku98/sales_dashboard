@@ -6,7 +6,7 @@ from dash import Dash, dcc, html, Input, Output, State, dash_table, ctx, no_upda
 from dash.exceptions import PreventUpdate
 import plotly.express as px
 import plotly.graph_objects as go
-from datetime import datetime
+from datetime import datetime, timedelta
 from supabase import create_client, Client
 
 # ── Supabase ───────────────────────────────────────────────────────────────────
@@ -16,6 +16,7 @@ supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
 
 # ── App ────────────────────────────────────────────────────────────────────────
 CEDI = '\u20b5'
+SITE_URL = os.environ.get("SITE_URL", "sales-dashboard.app")
 
 app = Dash(
     __name__,
@@ -51,7 +52,7 @@ LABEL_STYLE = {
     'display': 'block', 'marginBottom': '6px', 'fontWeight': '600',
     'color': 'var(--text, #1f2937)', 'fontSize': '0.9em',
 }
-AUTH_INPUT = {}  # Styled via CSS input#id selectors
+AUTH_INPUT = {}
 AUTH_WRAP = {
     'display': 'flex', 'minHeight': '100dvh',
     'alignItems': 'center', 'justifyContent': 'center',
@@ -87,7 +88,14 @@ body {{ margin: 0; padding: 0; -webkit-text-size-adjust: 100%; overflow-x: hidde
   display: grid; grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 16px; margin-bottom: 18px;
 }}
-@media (max-width: 760px) {{ #charts-row {{ grid-template-columns: 1fr; }} }}
+#charts-row-bottom {{
+  display: grid; grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px; margin-bottom: 18px;
+}}
+@media (max-width: 760px) {{
+  #charts-row {{ grid-template-columns: 1fr; }}
+  #charts-row-bottom {{ grid-template-columns: 1fr; }}
+}}
 .chart-card {{
   background: var(--card-bg, white);
   border: 1px solid var(--card-border, #e5e7eb);
@@ -108,11 +116,11 @@ body {{ margin: 0; padding: 0; -webkit-text-size-adjust: 100%; overflow-x: hidde
 }}
 #manual-form-grid {{
   display: grid;
-  grid-template-columns: minmax(0,1fr) minmax(0,1fr) minmax(0,1fr) auto;
+  grid-template-columns: minmax(0,1fr) minmax(0,1fr) minmax(0,1fr) minmax(0,1fr) auto;
   gap: 14px; align-items: end; margin-bottom: 14px;
 }}
 #manual-form-grid > div {{ min-width: 0; }}
-@media (max-width: 680px) {{ #manual-form-grid {{ grid-template-columns: minmax(0,1fr) minmax(0,1fr); }} }}
+@media (max-width: 800px) {{ #manual-form-grid {{ grid-template-columns: minmax(0,1fr) minmax(0,1fr); }} }}
 @media (max-width: 420px) {{ #manual-form-grid {{ grid-template-columns: 1fr; }} }}
 @media (max-width: 680px) {{
   #add-data-btn   {{ width: 100%; }}
@@ -142,6 +150,41 @@ body {{ margin: 0; padding: 0; -webkit-text-size-adjust: 100%; overflow-x: hidde
   display: flex; justify-content: space-between; align-items: center;
   flex-wrap: wrap; gap: 8px; margin-bottom: 12px;
 }}
+
+/* Filter bar */
+#filter-bar {{
+  background: var(--card-bg, white);
+  border: 1px solid var(--card-border, #e5e7eb);
+  border-radius: 14px; padding: 18px 20px;
+  box-shadow: 0 2px 10px rgba(0,0,0,0.08); margin-bottom: 18px;
+  display: flex; flex-wrap: wrap; gap: 16px; align-items: flex-end;
+}}
+#filter-bar > div {{ flex: 1; min-width: 160px; }}
+@media (max-width: 600px) {{ #filter-bar > div {{ min-width: 100%; }} }}
+
+/* Target card */
+#target-card {{
+  background: var(--card-bg, white);
+  border: 1px solid var(--card-border, #e5e7eb);
+  border-radius: 14px; padding: 20px 24px;
+  box-shadow: 0 2px 10px rgba(0,0,0,0.08); margin-bottom: 18px;
+}}
+
+/* Progress bar */
+.progress-outer {{
+  height: 18px; border-radius: 9px;
+  background: var(--card-border, #e5e7eb);
+  overflow: hidden; margin: 10px 0 6px;
+}}
+.progress-inner {{
+  height: 100%; border-radius: 9px;
+  transition: width 0.6s ease;
+}}
+
+/* Trend badge */
+.trend-up   {{ color: #10b981; font-size: 0.78em; font-weight: 700; margin-top: 3px; }}
+.trend-down {{ color: #ef4444; font-size: 0.78em; font-weight: 700; margin-top: 3px; }}
+.trend-flat {{ color: #9ca3af; font-size: 0.78em; font-weight: 700; margin-top: 3px; }}
 
 /* ── Dashboard form inputs — fully themed ── */
 #dashboard-wrapper input[type=text],
@@ -222,7 +265,7 @@ input:-webkit-autofill:active {{
   transition: background-color 9999s ease-in-out 0s;
 }}
 
-/* ── Auth inputs — target the actual <input> Dash renders inside the wrapper ── */
+/* ── Auth inputs ── */
 input#login-email, input#login-password,
 input#signup-email, input#signup-password {{
   display: block !important;
@@ -262,6 +305,24 @@ input#signup-email:focus, input#signup-password:focus {{
   appearance: none;
   min-height: 52px !important;
 }}
+
+/* Export modal overlay */
+#export-modal {{
+  display: none;
+  position: fixed; inset: 0;
+  background: rgba(0,0,0,0.55);
+  z-index: 10000;
+  align-items: center; justify-content: center;
+}}
+#export-modal.open {{ display: flex; }}
+#export-modal-inner {{
+  background: var(--card-bg, white);
+  border-radius: 16px;
+  padding: 28px 32px;
+  width: 340px; max-width: 92vw;
+  box-shadow: 0 8px 40px rgba(0,0,0,0.3);
+  color: var(--text, #1f2937);
+}}
 </style>
 """
 
@@ -277,6 +338,72 @@ PWA_TAGS = (
     '</script>\n'
 )
 
+# html2canvas + jsPDF for client-side export
+EXPORT_SCRIPT = """
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script>
+window.exportDashboard = function(format) {
+    var target = document.getElementById('dashboard-wrapper');
+    if (!target) return;
+    html2canvas(target, {
+        scale: 2,
+        useCORS: true,
+        backgroundColor: null,
+        logging: false,
+    }).then(function(canvas) {
+        var watermark = window._siteUrl || 'sales-dashboard.app';
+        var ctx2 = canvas.getContext('2d');
+        ctx2.save();
+        ctx2.globalAlpha = 0.18;
+        ctx2.fillStyle = '#667eea';
+        ctx2.font = 'bold ' + Math.round(canvas.width / 28) + 'px Segoe UI, Arial, sans-serif';
+        ctx2.textAlign = 'center';
+        ctx2.textBaseline = 'middle';
+        var angle = -Math.PI / 8;
+        var step = 240;
+        for (var y = -step; y < canvas.height + step; y += step) {
+            for (var x = -step; x < canvas.width + step; x += step) {
+                ctx2.save();
+                ctx2.translate(x, y);
+                ctx2.rotate(angle);
+                ctx2.fillText(watermark, 0, 0);
+                ctx2.restore();
+            }
+        }
+        ctx2.restore();
+
+        if (format === 'png') {
+            var link = document.createElement('a');
+            link.download = 'sales-dashboard.png';
+            link.href = canvas.toDataURL('image/png');
+            link.click();
+        } else {
+            var imgData = canvas.toDataURL('image/jpeg', 0.92);
+            var { jsPDF } = window.jspdf;
+            var orientation = canvas.width > canvas.height ? 'l' : 'p';
+            var pdf = new jsPDF(orientation, 'px', [canvas.width / 2, canvas.height / 2]);
+            pdf.addImage(imgData, 'JPEG', 0, 0, canvas.width / 2, canvas.height / 2);
+            pdf.save('sales-dashboard.pdf');
+        }
+
+        // close modal
+        var modal = document.getElementById('export-modal');
+        if (modal) modal.classList.remove('open');
+    });
+};
+
+window.openExportModal = function() {
+    var modal = document.getElementById('export-modal');
+    if (modal) modal.classList.add('open');
+};
+window.closeExportModal = function() {
+    var modal = document.getElementById('export-modal');
+    if (modal) modal.classList.remove('open');
+};
+</script>
+"""
+
 app.index_string = (
     '<!DOCTYPE html>\n<html>\n  <head>\n'
     '    {%metas%}\n    <title>Sales Dashboard</title>\n'
@@ -285,6 +412,7 @@ app.index_string = (
     + CSS +
     '  </head>\n  <body>\n    {%app_entry%}\n'
     '    <footer>{%config%}{%scripts%}{%renderer%}</footer>\n'
+    + EXPORT_SCRIPT +
     '  </body>\n</html>'
 )
 
@@ -303,6 +431,7 @@ def insert_rows(user_id: str, df: pd.DataFrame):
             supabase.table("sales_records").insert({
                 "user_id": user_id, "date": row["date"],
                 "product": row["product"], "sales": row["sales"],
+                "category": row.get("category", ""),
             }).execute()
         except Exception as e:
             print(f"[insert_rows] {e}")
@@ -320,15 +449,16 @@ def clean_col_names(df):
 
 def records_to_df(records):
     if not records:
-        return pd.DataFrame(columns=['date', 'product', 'sales'])
+        return pd.DataFrame(columns=['date', 'product', 'sales', 'category'])
     df = pd.DataFrame(records)
     df = clean_col_names(df)
-    for col in ['date', 'product', 'sales']:
+    for col in ['date', 'product', 'sales', 'category']:
         if col not in df.columns:
             df[col] = None
-    df = df[['date', 'product', 'sales']].copy()
-    df['sales'] = pd.to_numeric(df['sales'], errors='coerce')
-    df['date']  = pd.to_datetime(df['date'], errors='coerce')
+    df = df[['date', 'product', 'sales', 'category']].copy()
+    df['sales']    = pd.to_numeric(df['sales'], errors='coerce')
+    df['date']     = pd.to_datetime(df['date'], errors='coerce')
+    df['category'] = df['category'].fillna('').astype(str)
     df = df.dropna(subset=['sales'])
     df = df[df['product'].notna() & (df['product'].astype(str).str.strip() != '')]
     return df.reset_index(drop=True)
@@ -346,10 +476,10 @@ def parse_uploaded_file(contents, filename):
         else:
             return None
         raw = clean_col_names(raw)
-        for col in ['date', 'product', 'sales']:
+        for col in ['date', 'product', 'sales', 'category']:
             if col not in raw.columns:
-                raw[col] = None
-        raw = raw[['date', 'product', 'sales']].copy()
+                raw[col] = ''
+        raw = raw[['date', 'product', 'sales', 'category']].copy()
         raw = raw.dropna(how='all')
         raw['sales'] = pd.to_numeric(raw['sales'], errors='coerce')
         raw['date']  = pd.to_datetime(raw['date'], errors='coerce').dt.strftime('%Y-%m-%d')
@@ -360,6 +490,16 @@ def parse_uploaded_file(contents, filename):
 
 def fmt_cedi(v):
     return f'{CEDI}{v:,.0f}'
+
+def trend_badge(current, previous):
+    if previous is None or previous == 0:
+        return html.Div('— No prior period', className='trend-flat')
+    pct = (current - previous) / previous * 100
+    if pct > 0:
+        return html.Div(f'▲ {pct:.1f}% vs prev period', className='trend-up')
+    elif pct < 0:
+        return html.Div(f'▼ {abs(pct):.1f}% vs prev period', className='trend-down')
+    return html.Div('→ No change vs prev period', className='trend-flat')
 
 # ── Theme palettes ────────────────────────────────────────────────────────────
 THEME = {
@@ -426,11 +566,10 @@ def empty_fig(t='light'):
     )
     return fig
 
-def stat_card(title, value, icon, color, th=None):
+def stat_card(title, value, icon, color, th=None, trend_el=None):
     if th is None:
         th = THEME['light']
     return html.Div(className='stat-card', style={
-        'borderLeft': f'4px solid {color}',
         'backgroundColor': th['card_bg'],
         'border': f'1px solid {th["card_border"]}',
         'borderLeft': f'4px solid {color}',
@@ -444,6 +583,7 @@ def stat_card(title, value, icon, color, th=None):
                          html.Div(value, className='stat-val',
                                   style={'color': th['stat_text'], 'fontSize': '1.6em',
                                          'fontWeight': '700', 'lineHeight': '1.1', 'wordBreak': 'break-all'}),
+                         trend_el if trend_el else html.Div(),
                      ]),
                      html.Div(icon, className='stat-icon',
                               style={'fontSize': '2em', 'opacity': '0.25', 'flexShrink': '0'}),
@@ -496,8 +636,10 @@ def dashboard_layout():
                'fontFamily': "'Segoe UI', Tahoma, Geneva, Verdana, sans-serif"},
         children=[
             dcc.Store(id='stored-data', storage_type='session', data=[]),
-            # Polls every 60s to detect session expiry and redirect to login
             dcc.Interval(id='session-check', interval=60_000, n_intervals=0),
+
+            # inject site URL for watermark
+            html.Script(f'window._siteUrl = "{SITE_URL}";'),
 
             html.Div(id='app-header', style={
                 'background': f'linear-gradient(135deg, {COLORS["primary"]} 0%, {COLORS["secondary"]} 100%)',
@@ -511,6 +653,14 @@ def dashboard_layout():
                     html.H1('\U0001f4ca Sales Analytics Dashboard', className='hdr-title',
                             style={'margin': '0', 'fontSize': '1.9em', 'fontWeight': '700'}),
                     html.Div(style={'display':'flex','gap':'8px','alignItems':'center'}, children=[
+                        html.Button('📥 Export', id='export-btn', n_clicks=0,
+                                    style={
+                                        'background': 'rgba(255,255,255,0.15)',
+                                        'color': 'white', 'border': '1.5px solid rgba(255,255,255,0.5)',
+                                        'borderRadius': '20px', 'padding': '7px 14px',
+                                        'fontSize': '0.85em', 'fontWeight': '600', 'cursor': 'pointer',
+                                        'whiteSpace': 'nowrap', 'flexShrink': '0',
+                                    }),
                         html.Button(id='theme-toggle-btn', n_clicks=0,
                                     style={
                                         'background': 'rgba(255,255,255,0.15)',
@@ -539,8 +689,33 @@ def dashboard_layout():
             ]),
             html.Div(id='signout-toast', style={'display': 'none'}),
 
+            # ── Export Modal ──────────────────────────────────────────────────
+            html.Div(id='export-modal', children=[
+                html.Div(id='export-modal-inner', children=[
+                    html.H3('Export Dashboard', style={'margin': '0 0 18px', 'fontSize': '1.15em'}),
+                    html.P(f'Watermark: {SITE_URL}',
+                           style={'fontSize': '0.82em', 'color': '#9ca3af', 'margin': '0 0 20px'}),
+                    html.Div(style={'display': 'flex', 'gap': '12px', 'flexWrap': 'wrap'}, children=[
+                        html.Button('🖼️ Export as PNG', id='export-png-btn', n_clicks=0,
+                                    style={**BTN_BASE, 'padding': '11px 20px',
+                                           'backgroundColor': COLORS['primary'], 'color': 'white',
+                                           'flex': '1'}),
+                        html.Button('📄 Export as PDF', id='export-pdf-btn', n_clicks=0,
+                                    style={**BTN_BASE, 'padding': '11px 20px',
+                                           'backgroundColor': COLORS['secondary'], 'color': 'white',
+                                           'flex': '1'}),
+                    ]),
+                    html.Button('✕ Cancel', id='export-cancel-btn', n_clicks=0,
+                                style={**BTN_BASE, 'width': '100%', 'marginTop': '12px',
+                                       'padding': '9px', 'backgroundColor': '#e5e7eb',
+                                       'color': '#374151'}),
+                ]),
+            ]),
+
             html.Div(id='dashboard-wrapper', children=[
             html.Div(id='main-container', children=[
+
+                # ── Data entry card ───────────────────────────────────────────
                 html.Div(className='input-card', children=[
                     html.Div(className='tab-row', children=[
                         html.Button('\U0001f4e4 Upload File', id='tab-upload', n_clicks=1,
@@ -566,7 +741,7 @@ def dashboard_layout():
                                        html.Div('\U0001f4c1', style={'fontSize': '2.2em', 'marginBottom': '6px'}),
                                        html.Div('Drag and Drop or Tap to Select',
                                                 style={'fontSize': '1em', 'fontWeight': '600'}),
-                                       html.Div('CSV or Excel (.xlsx)',
+                                       html.Div('CSV or Excel (.xlsx) — columns: date, product, sales, category (optional)',
                                                 style={'fontSize': '0.82em', 'color': '#6b7280', 'marginTop': '3px'}),
                                    ])),
                     ]),
@@ -592,6 +767,11 @@ def dashboard_layout():
                                           placeholder='0.00', style=INPUT_STYLE),
                             ]),
                             html.Div([
+                                html.Label('Category (optional)', style=LABEL_STYLE),
+                                dcc.Input(id='input-category', type='text',
+                                          placeholder='e.g. Electronics', style=INPUT_STYLE),
+                            ]),
+                            html.Div([
                                 html.Label('\u00a0', style={**LABEL_STYLE, 'visibility': 'hidden'}),
                                 html.Button('\u2795 Add', id='add-data-btn', n_clicks=0,
                                             style={**BTN_BASE, 'width': '100%', 'padding': '10px 18px',
@@ -607,8 +787,65 @@ def dashboard_layout():
                                     'textAlign': 'center', 'fontSize': '0.9em', 'display': 'none'}),
                 ]),
 
+                # ── Filter bar ────────────────────────────────────────────────
+                html.Div(id='filter-bar', children=[
+                    html.Div([
+                        html.Label('📅 Date Range', style={**LABEL_STYLE, 'marginBottom': '6px'}),
+                        dcc.DatePickerRange(
+                            id='filter-date-range',
+                            display_format='YYYY-MM-DD',
+                            style={'width': '100%'},
+                        ),
+                    ]),
+                    html.Div([
+                        html.Label('🏷️ Product(s)', style={**LABEL_STYLE, 'marginBottom': '6px'}),
+                        dcc.Dropdown(id='filter-products', multi=True,
+                                     placeholder='All products…',
+                                     style={'fontSize': '0.93em'}),
+                    ]),
+                    html.Div([
+                        html.Label('📂 Category', style={**LABEL_STYLE, 'marginBottom': '6px'}),
+                        dcc.Dropdown(id='filter-categories', multi=True,
+                                     placeholder='All categories…',
+                                     style={'fontSize': '0.93em'}),
+                    ]),
+                    html.Div([
+                        html.Label('\u00a0', style={**LABEL_STYLE, 'marginBottom': '6px', 'visibility': 'hidden'}),
+                        html.Button('↺ Reset Filters', id='reset-filters-btn', n_clicks=0,
+                                    style={**BTN_BASE, 'width': '100%', 'padding': '10px 16px',
+                                           'backgroundColor': '#e5e7eb', 'color': '#374151'}),
+                    ], style={'maxWidth': '140px'}),
+                ]),
+
+                # ── Sales target card ─────────────────────────────────────────
+                html.Div(id='target-card', children=[
+                    html.Div(style={'display': 'flex', 'justifyContent': 'space-between',
+                                    'alignItems': 'center', 'flexWrap': 'wrap', 'gap': '12px'}, children=[
+                        html.Div([
+                            html.H3('🎯 Monthly Sales Target', style={
+                                'margin': '0 0 4px', 'fontSize': '1.05em',
+                                'color': 'var(--text, #1f2937)'}),
+                            html.Div(id='target-progress-text',
+                                     style={'fontSize': '0.85em', 'color': 'var(--sub-text, #6b7280)'}),
+                        ]),
+                        html.Div(style={'display': 'flex', 'gap': '10px', 'alignItems': 'center'}, children=[
+                            html.Label(f'Target ({CEDI})', style={**LABEL_STYLE, 'margin': '0',
+                                                                   'whiteSpace': 'nowrap'}),
+                            dcc.Input(id='target-input', type='number', min=0,
+                                      placeholder='e.g. 50000',
+                                      style={**INPUT_STYLE, 'width': '160px', 'margin': '0'}),
+                        ]),
+                    ]),
+                    html.Div(className='progress-outer', children=[
+                        html.Div(id='target-progress-bar', className='progress-inner',
+                                 style={'width': '0%', 'backgroundColor': COLORS['success']}),
+                    ]),
+                ]),
+
+                # ── Stat cards ────────────────────────────────────────────────
                 html.Div(id='stats-cards'),
 
+                # ── Top row charts ────────────────────────────────────────────
                 html.Div(id='charts-row', children=[
                     html.Div(className='chart-card', children=[
                         html.H3('\U0001f4c8 Sales Trend',
@@ -632,9 +869,48 @@ def dashboard_layout():
                     ]),
                 ]),
 
+                # ── Bottom row charts ─────────────────────────────────────────
+                html.Div(id='charts-row-bottom', children=[
+                    html.Div(className='chart-card', children=[
+                        html.H3('🥧 Revenue Share',
+                                style={'color': 'var(--text, #1f2937)', 'margin': '0 0 2px', 'fontSize': '1.1em'}),
+                        html.P('Product share of total revenue',
+                               style={'color': '#9ca3af', 'fontSize': '0.78em', 'margin': '0 0 12px'}),
+                        html.Div(className='graph-wrap', children=[
+                            dcc.Graph(id='donut-chart', style={'height': '100%'},
+                                      config={'displayModeBar': False, 'responsive': True}),
+                        ]),
+                    ]),
+                    html.Div(className='chart-card', children=[
+                        html.H3('📊 Month-over-Month',
+                                style={'color': 'var(--text, #1f2937)', 'margin': '0 0 2px', 'fontSize': '1.1em'}),
+                        html.P('Current vs previous month per product (top 8)',
+                               style={'color': '#9ca3af', 'fontSize': '0.78em', 'margin': '0 0 12px'}),
+                        html.Div(className='graph-wrap', children=[
+                            dcc.Graph(id='mom-chart', style={'height': '100%'},
+                                      config={'displayModeBar': False, 'responsive': True}),
+                        ]),
+                    ]),
+                ]),
+
+                # ── Heatmap row ───────────────────────────────────────────────
+                html.Div(style={'marginBottom': '18px'}, children=[
+                    html.Div(className='chart-card', children=[
+                        html.H3('🌡️ Sales Heatmap',
+                                style={'color': 'var(--text, #1f2937)', 'margin': '0 0 2px', 'fontSize': '1.1em'}),
+                        html.P('Sales by day-of-week and week number',
+                               style={'color': '#9ca3af', 'fontSize': '0.78em', 'margin': '0 0 12px'}),
+                        html.Div(className='graph-wrap', children=[
+                            dcc.Graph(id='heatmap-chart', style={'height': '100%'},
+                                      config={'displayModeBar': False, 'responsive': True}),
+                        ]),
+                    ]),
+                ]),
+
+                # ── Data table ────────────────────────────────────────────────
                 html.Div(id='data-table-container', style={'marginBottom': '24px'}),
 
-            ]),  # end dashboard-wrapper
+            ]),
                 html.Div(style={'textAlign': 'center', 'padding': '10px 0 24px',
                                 'color': '#9ca3af', 'fontSize': '0.82em'},
                          children=[html.Ul(
@@ -647,8 +923,6 @@ def dashboard_layout():
     )
 
 # ── Root layout ────────────────────────────────────────────────────────────────
-# session-store and url live here permanently so they are always in the DOM.
-# page-content is swapped by the router callback.
 app.layout = html.Div(id='app-root', children=[
     dcc.Location(id='url', refresh=False),
     dcc.Store(id='session-store', storage_type='session'),
@@ -664,24 +938,15 @@ app.layout = html.Div(id='app-root', children=[
 )
 def render_page(pathname, session):
     authenticated = bool(session and session.get('user_id'))
-
     if pathname == '/signup':
         return signup_layout()
-
     if pathname == '/dashboard':
         if not authenticated:
-            # Not logged in — bounce back to login
             return dcc.Location(id='auth-redirect', href='/login', refresh=True)
         return dashboard_layout()
-
-    # /login or anything else
     return login_layout()
 
-# ── Login callback ─────────────────────────────────────────────────────────────
-# Writes the session and updates the URL pathname in one atomic step.
-# Because url has refresh=False, Dash re-renders page-content via render_page
-# without a full page reload — session-store is already written so the
-# auth check in render_page passes immediately.
+# ── Login ──────────────────────────────────────────────────────────────────────
 @app.callback(
     Output('login-msg',     'children'),
     Output('session-store', 'data'),
@@ -694,7 +959,6 @@ def render_page(pathname, session):
     prevent_initial_call=True,
 )
 def login_user(btn_clicks, _email_input, _password_input, email, password):
-    # Clear error message whenever user edits either field
     if ctx.triggered_id in ('login-email', 'login-password'):
         return "", no_update, no_update
     if not email or not password:
@@ -707,7 +971,7 @@ def login_user(btn_clicks, _email_input, _password_input, email, password):
         print(f"[login_user] {e}")
         return "Invalid email or password.", no_update, no_update
 
-# ── Signup callback ────────────────────────────────────────────────────────────
+# ── Signup ─────────────────────────────────────────────────────────────────────
 @app.callback(
     Output('signup-msg',   'children'),
     Output('signup-msg',   'style'),
@@ -730,7 +994,7 @@ def signup_user(n_clicks, email, password):
         print(f"[signup_user] {e}")
         return "Signup failed. Email may already be in use.", err
 
-# ── Greeting callback ─────────────────────────────────────────────────────────
+# ── Greeting ───────────────────────────────────────────────────────────────────
 @app.callback(
     Output('user-greeting', 'children'),
     Input('session-store',  'data'),
@@ -739,22 +1003,15 @@ def update_greeting(session):
     if not session or not session.get('user_id'):
         return ''
     email = session.get('email', '')
-    # Derive first name: take the part before @ then before any dot/underscore
     if email:
-        local = email.split('@')[0]
         import re
-        # Split on common separators first
+        local = email.split('@')[0]
         parts = re.split(r'[._\-]+', local)
-        if len(parts) > 1:
-            firstname = parts[0].capitalize()
-        else:
-            # No separator — treat whole local as name, just capitalise it
-            # e.g. willvoks → Willvoks, johndoe → Johndoe
-            firstname = local.capitalize()
+        firstname = parts[0].capitalize() if len(parts) > 1 else local.capitalize()
         return f'👋 Hello, {firstname}!'
     return '👋 Hello!'
 
-# ── Sign-out callback ──────────────────────────────────────────────────────────
+# ── Sign-out ───────────────────────────────────────────────────────────────────
 @app.callback(
     Output('session-store',   'data',     allow_duplicate=True),
     Output('url',             'pathname', allow_duplicate=True),
@@ -767,16 +1024,12 @@ def update_greeting(session):
 def sign_out(n_clicks, session):
     if not n_clicks:
         raise PreventUpdate
-    # Derive first name for goodbye message
+    import re
     email = (session or {}).get('email', '')
     if email:
         local = email.split('@')[0]
-        import re
         parts = re.split(r'[._\-]+', local)
-        if len(parts) > 1:
-            firstname = parts[0].capitalize()
-        else:
-            firstname = local.capitalize()
+        firstname = parts[0].capitalize() if len(parts) > 1 else local.capitalize()
         goodbye = f'👋 Goodbye, {firstname}! You have been signed out.'
     else:
         goodbye = '👋 You have been signed out.'
@@ -793,7 +1046,7 @@ def sign_out(n_clicks, session):
     }
     return None, '/login', goodbye, toast_style
 
-# ── Session expiry check ──────────────────────────────────────────────────────
+# ── Session check ──────────────────────────────────────────────────────────────
 @app.callback(
     Output('url', 'pathname', allow_duplicate=True),
     Input('session-check',  'n_intervals'),
@@ -802,19 +1055,17 @@ def sign_out(n_clicks, session):
     prevent_initial_call=True,
 )
 def check_session(n, session, pathname):
-    # Only check when on the dashboard
     if pathname != '/dashboard':
         raise PreventUpdate
     if not session or not session.get('token'):
         return '/login'
-    # Verify token is still valid with Supabase
     try:
         supabase.auth.get_user(session['token'])
         raise PreventUpdate
     except Exception:
         return '/login'
 
-# ── Theme toggle callback ─────────────────────────────────────────────────────
+# ── Theme toggle ───────────────────────────────────────────────────────────────
 @app.callback(
     Output('theme-store',       'data'),
     Output('theme-toggle-btn',  'children'),
@@ -826,17 +1077,14 @@ def toggle_theme(n, current):
     new_theme = 'light' if current == 'dark' else 'dark'
     return new_theme, THEME[new_theme]['toggle_label']
 
-# ── Sync toggle button label on page load ──────────────────────────────────────
 @app.callback(
     Output('theme-toggle-btn', 'children', allow_duplicate=True),
     Input('theme-store',       'data'),
     prevent_initial_call='initial_duplicate',
 )
 def sync_toggle_label(theme):
-    t = theme or 'dark'
-    return THEME[t]['toggle_label']
+    return THEME[theme or 'dark']['toggle_label']
 
-# ── Apply theme to page background and cards ───────────────────────────────────
 @app.callback(
     Output('app-root', 'style'),
     Input('theme-store', 'data'),
@@ -845,7 +1093,7 @@ def apply_theme_to_root(theme):
     t = theme or 'dark'
     return {'backgroundColor': THEME[t]['page_bg'], 'minHeight': '100vh'}
 
-# ── Dashboard: tab switcher ────────────────────────────────────────────────────
+# ── Tab switcher ───────────────────────────────────────────────────────────────
 @app.callback(
     Output('upload-section', 'style'),
     Output('manual-section', 'style'),
@@ -865,25 +1113,53 @@ def switch_tabs(_u, _m):
         return {'display': 'block'}, {'display': 'none'}, active, inactive
     return {'display': 'none'}, {'display': 'block'}, inactive, active
 
-# ── Dashboard: data management ────────────────────────────────────────────────
+# ── Export modal (open/close via clientside) ───────────────────────────────────
+app.clientside_callback(
+    "function(n) { if(n) window.openExportModal(); return window.dash_clientside.no_update; }",
+    Output('export-btn', 'n_clicks'),
+    Input('export-btn', 'n_clicks'),
+    prevent_initial_call=True,
+)
+app.clientside_callback(
+    "function(n) { if(n) window.closeExportModal(); return window.dash_clientside.no_update; }",
+    Output('export-cancel-btn', 'n_clicks'),
+    Input('export-cancel-btn', 'n_clicks'),
+    prevent_initial_call=True,
+)
+app.clientside_callback(
+    "function(n) { if(n) { window.exportDashboard('png'); } return window.dash_clientside.no_update; }",
+    Output('export-png-btn', 'n_clicks'),
+    Input('export-png-btn', 'n_clicks'),
+    prevent_initial_call=True,
+)
+app.clientside_callback(
+    "function(n) { if(n) { window.exportDashboard('pdf'); } return window.dash_clientside.no_update; }",
+    Output('export-pdf-btn', 'n_clicks'),
+    Input('export-pdf-btn', 'n_clicks'),
+    prevent_initial_call=True,
+)
+
+# ── Data management ────────────────────────────────────────────────────────────
 @app.callback(
     Output('stored-data',    'data'),
     Output('status-message', 'children'),
     Output('status-message', 'style'),
     Output('input-product',  'value'),
     Output('input-sales',    'value'),
+    Output('input-category', 'value'),
     Input('add-data-btn',    'n_clicks'),
     Input('clear-data-btn',  'n_clicks'),
     Input('upload-data',     'contents'),
     State('input-date',      'date'),
     State('input-product',   'value'),
     State('input-sales',     'value'),
+    State('input-category',  'value'),
     State('upload-data',     'filename'),
     State('session-store',   'data'),
     prevent_initial_call=True,
 )
 def manage_data(add_clicks, clear_clicks, upload_contents,
-                date, product, sales, filename, session):
+                date, product, sales, category, filename, session):
     user_id = (session or {}).get('user_id')
     trigger = ctx.triggered_id
 
@@ -910,67 +1186,172 @@ def manage_data(add_clicks, clear_clicks, upload_contents,
             insert_rows(user_id, uploaded)
             refreshed = load_user_data(user_id)
             sty, msg = ok(f'\u2705 Loaded {filename} \u2014 {len(uploaded)} rows saved to Supabase')
-            return refreshed, msg, sty, no_update, no_update
+            return refreshed, msg, sty, no_update, no_update, no_update
         sty, msg = err(f'\u274c Could not parse "{filename}". Use CSV/Excel with date, product, sales columns.')
-        return no_update, msg, sty, no_update, no_update
+        return no_update, msg, sty, no_update, no_update, no_update
 
     if trigger == 'add-data-btn':
         if not date or not product or not str(product).strip() or sales is None:
             sty, msg = err('\u274c Fill in all fields (Date, Product, Sales).')
-            return no_update, msg, sty, product, sales
+            return no_update, msg, sty, product, sales, category
         v = float(sales)
         if v < 0:
             sty, msg = err('\u274c Sales cannot be negative.')
-            return no_update, msg, sty, product, sales
+            return no_update, msg, sty, product, sales, category
         new_row = pd.DataFrame({
-            'date':    [pd.to_datetime(date).strftime('%Y-%m-%d')],
-            'product': [str(product).strip()],
-            'sales':   [v],
+            'date':     [pd.to_datetime(date).strftime('%Y-%m-%d')],
+            'product':  [str(product).strip()],
+            'sales':    [v],
+            'category': [str(category).strip() if category else ''],
         })
         insert_rows(user_id, new_row)
         refreshed = load_user_data(user_id)
         sty, msg = ok(f'\u2705 Added {str(product).strip()} \u2014 {fmt_cedi(v)} on {date}')
-        return refreshed, msg, sty, '', None
+        return refreshed, msg, sty, '', None, ''
 
     if trigger == 'clear-data-btn':
         delete_user_data(user_id)
         sty, msg = ok('\u2705 All data cleared from Supabase.')
-        return [], msg, sty, '', None
+        return [], msg, sty, '', None, ''
 
     raise PreventUpdate
 
-# ── Dashboard: charts + table ─────────────────────────────────────────────────
+# ── Filter bar population ──────────────────────────────────────────────────────
 @app.callback(
-    Output('sales-line-chart',     'figure'),
-    Output('product-bar-chart',    'figure'),
-    Output('stats-cards',          'children'),
-    Output('data-table-container', 'children'),
-    Output('dashboard-wrapper',    'style'),
-    Input('stored-data',           'data'),
-    Input('session-store',         'data'),
-    Input('theme-store',           'data'),
+    Output('filter-products',   'options'),
+    Output('filter-categories', 'options'),
+    Output('filter-date-range', 'min_date_allowed'),
+    Output('filter-date-range', 'max_date_allowed'),
+    Output('filter-date-range', 'start_date'),
+    Output('filter-date-range', 'end_date'),
+    Input('stored-data',  'data'),
+    Input('session-store','data'),
+    Input('reset-filters-btn', 'n_clicks'),
 )
-def update_dashboard(stored_data, session, theme):
-    t = theme or 'dark'
-    th = THEME[t]
+def populate_filters(stored_data, session, _reset):
     user_id = (session or {}).get('user_id')
     records = load_user_data(user_id) if user_id else (stored_data or [])
     data = records_to_df(records)
 
     if data.empty:
-        stats = [html.Div('\U0001f4ed No data yet \u2014 upload a file or enter records manually.',
+        return [], [], None, None, None, None
+
+    products   = sorted(data['product'].dropna().unique().tolist())
+    categories = sorted([c for c in data['category'].unique() if c])
+    min_d = data['date'].min().strftime('%Y-%m-%d')
+    max_d = data['date'].max().strftime('%Y-%m-%d')
+    return (
+        [{'label': p, 'value': p} for p in products],
+        [{'label': c, 'value': c} for c in categories],
+        min_d, max_d, min_d, max_d,
+    )
+
+# ── Main dashboard update ──────────────────────────────────────────────────────
+@app.callback(
+    Output('sales-line-chart',     'figure'),
+    Output('product-bar-chart',    'figure'),
+    Output('donut-chart',          'figure'),
+    Output('mom-chart',            'figure'),
+    Output('heatmap-chart',        'figure'),
+    Output('stats-cards',          'children'),
+    Output('data-table-container', 'children'),
+    Output('dashboard-wrapper',    'style'),
+    Output('target-progress-bar',  'style'),
+    Output('target-progress-text', 'children'),
+    Input('stored-data',           'data'),
+    Input('session-store',         'data'),
+    Input('theme-store',           'data'),
+    Input('filter-date-range',     'start_date'),
+    Input('filter-date-range',     'end_date'),
+    Input('filter-products',       'value'),
+    Input('filter-categories',     'value'),
+    Input('target-input',          'value'),
+)
+def update_dashboard(stored_data, session, theme,
+                     start_date, end_date, sel_products, sel_categories,
+                     target_val):
+    t = theme or 'dark'
+    th = THEME[t]
+    user_id = (session or {}).get('user_id')
+    records = load_user_data(user_id) if user_id else (stored_data or [])
+    full_data = records_to_df(records)
+
+    # ── Apply filters ─────────────────────────────────────────────────────────
+    data = full_data.copy()
+    if not data.empty:
+        if start_date:
+            data = data[data['date'] >= pd.to_datetime(start_date)]
+        if end_date:
+            data = data[data['date'] <= pd.to_datetime(end_date)]
+        if sel_products:
+            data = data[data['product'].isin(sel_products)]
+        if sel_categories:
+            data = data[data['category'].isin(sel_categories)]
+
+    # ── Trend: compare current vs previous equal-length period ────────────────
+    def prev_period_total(df, col='sales'):
+        if df.empty or df['date'].dropna().empty:
+            return None, None
+        mn, mx = df['date'].min(), df['date'].max()
+        span = (mx - mn).days or 1
+        prev_end   = mn - timedelta(days=1)
+        prev_start = prev_end - timedelta(days=span)
+        prev = full_data[(full_data['date'] >= prev_start) & (full_data['date'] <= prev_end)]
+        return df[col].sum(), prev[col].sum() if not prev.empty else None
+
+    cur_total, prev_total = prev_period_total(data)
+
+    # ── Stat cards ────────────────────────────────────────────────────────────
+    if data.empty:
+        stats = [html.Div('\U0001f4ed No data yet — upload a file or enter records manually.',
                           style={'color': th['sub_text'], 'padding': '18px', 'textAlign': 'center',
                                  'gridColumn': '1 / -1', 'background': th['card_bg'],
                                  'borderRadius': '12px', 'boxShadow': '0 2px 8px rgba(0,0,0,0.07)'})]
     else:
         s = data['sales'].dropna()
+
+        # per-product count trend (products in current vs prev period)
+        prev_recs = full_data.copy()
+        if not data.empty and not data['date'].dropna().empty:
+            mn, mx = data['date'].min(), data['date'].max()
+            span = (mx - mn).days or 1
+            prev_end   = mn - timedelta(days=1)
+            prev_start = prev_end - timedelta(days=span)
+            prev_recs = full_data[(full_data['date'] >= prev_start) & (full_data['date'] <= prev_end)]
+
         stats = [
-            stat_card('Total Sales',  fmt_cedi(s.sum()),             '\U0001f4b0', COLORS['success'],  th),
-            stat_card('Average Sale', fmt_cedi(s.mean()),             '\U0001f4ca', COLORS['primary'],  th),
-            stat_card('Products',     str(data['product'].nunique()), '\U0001f3f7\ufe0f', COLORS['warning'],  th),
-            stat_card('Records',      str(len(data)),                 '\U0001f4dd', COLORS['secondary'], th),
+            stat_card('Total Sales',  fmt_cedi(s.sum()),             '\U0001f4b0', COLORS['success'],  th,
+                      trend_badge(s.sum(), prev_total)),
+            stat_card('Average Sale', fmt_cedi(s.mean()),             '\U0001f4ca', COLORS['primary'],  th,
+                      trend_badge(s.mean(), prev_recs['sales'].mean() if not prev_recs.empty else None)),
+            stat_card('Products',     str(data['product'].nunique()), '\U0001f3f7\ufe0f', COLORS['warning'],  th,
+                      trend_badge(data['product'].nunique(),
+                                  prev_recs['product'].nunique() if not prev_recs.empty else None)),
+            stat_card('Records',      str(len(data)),                 '\U0001f4dd', COLORS['secondary'], th,
+                      trend_badge(len(data), len(prev_recs) if not prev_recs.empty else None)),
         ]
 
+    # ── Target progress ───────────────────────────────────────────────────────
+    target = float(target_val) if target_val else 0
+    actual = data['sales'].sum() if not data.empty else 0
+    if target > 0:
+        pct = min(actual / target * 100, 100)
+        bar_color = COLORS['success'] if pct >= 100 else (COLORS['warning'] if pct >= 60 else COLORS['danger'])
+        prog_text = f'{fmt_cedi(actual)} of {fmt_cedi(target)} ({pct:.1f}%)'
+    else:
+        pct = 0
+        bar_color = COLORS['primary']
+        prog_text = 'Set a target above to track your progress'
+
+    progress_bar_style = {
+        'width': f'{pct:.1f}%',
+        'backgroundColor': bar_color,
+        'height': '100%',
+        'borderRadius': '9px',
+        'transition': 'width 0.6s ease',
+    }
+
+    # ── Line chart ────────────────────────────────────────────────────────────
     if data.empty:
         line_fig = empty_fig(t)
     else:
@@ -980,8 +1361,19 @@ def update_dashboard(stored_data, session, theme):
                       .sum().rename(columns={'_d': 'date'}).sort_values('date'))
         line_fig = empty_fig(t) if daily.empty else _line_chart(daily, t)
 
+    # ── Bar chart ─────────────────────────────────────────────────────────────
     bar_fig = empty_fig(t) if data.empty else _bar_chart(data, t)
 
+    # ── Donut chart ───────────────────────────────────────────────────────────
+    donut_fig = empty_fig(t) if data.empty else _donut_chart(data, t)
+
+    # ── Month-over-month ──────────────────────────────────────────────────────
+    mom_fig = empty_fig(t) if data.empty else _mom_chart(data, t)
+
+    # ── Heatmap ───────────────────────────────────────────────────────────────
+    heat_fig = empty_fig(t) if data.empty else _heatmap_chart(data, t)
+
+    # ── Table ─────────────────────────────────────────────────────────────────
     if data.empty:
         tbl = html.Div('\U0001f4ed No data to display.',
                        style={'color': '#6b7280', 'textAlign': 'center', 'padding': '20px'})
@@ -989,7 +1381,7 @@ def update_dashboard(stored_data, session, theme):
         disp = data.sort_values('date', ascending=False).copy()
         disp['date']  = disp['date'].dt.strftime('%Y-%m-%d')
         disp['sales'] = disp['sales'].round(2)
-        col_map = {'date': 'Date', 'product': 'Product', 'sales': f'Sales ({CEDI})'}
+        col_map = {'date': 'Date', 'product': 'Product', 'sales': f'Sales ({CEDI})', 'category': 'Category'}
         tbl = html.Div(style={'backgroundColor': th['card_bg'], 'borderRadius': '14px',
                               'padding': '22px', 'boxShadow': '0 2px 10px rgba(0,0,0,0.07)',
                               'border': f'1px solid {th["card_border"]}'}, children=[
@@ -1003,7 +1395,9 @@ def update_dashboard(stored_data, session, theme):
             ]),
             dash_table.DataTable(
                 id='data-table', data=disp.to_dict('records'),
-                columns=[{'name': col_map.get(c, c.title()), 'id': c} for c in disp.columns],
+                columns=[{'name': col_map.get(c, c.title()), 'id': c, 'editable': True}
+                         for c in disp.columns],
+                editable=True,
                 page_size=10, sort_action='native', filter_action='native',
                 style_table={'overflowX': 'auto', 'minWidth': '100%'},
                 style_cell={'textAlign': 'left', 'padding': '9px 12px', 'whiteSpace': 'nowrap',
@@ -1021,10 +1415,11 @@ def update_dashboard(stored_data, session, theme):
                     'fontSize': '0.85em',
                 },
                 style_data_conditional=[
-                    {'if': {'row_index': 'odd'},
-                     'backgroundColor': th['plot_bg']},
+                    {'if': {'row_index': 'odd'}, 'backgroundColor': th['plot_bg']},
                     {'if': {'column_id': 'sales'}, 'textAlign': 'right', 'fontWeight': '600'},
                 ],
+                tooltip_delay=0,
+                tooltip_duration=None,
             ),
         ])
 
@@ -1040,9 +1435,11 @@ def update_dashboard(stored_data, session, theme):
         '--input-text':  th['input_text'],
         '--input-border':th['input_border'],
     }
-    return line_fig, bar_fig, stats, tbl, wrapper_style
+    return (line_fig, bar_fig, donut_fig, mom_fig, heat_fig,
+            stats, tbl, wrapper_style, progress_bar_style, prog_text)
 
 
+# ── Chart builders ─────────────────────────────────────────────────────────────
 def _line_chart(daily, t='light'):
     th = THEME[t]
     fig = px.line(daily, x='date', y='sales', labels={'date': '', 'sales': ''})
@@ -1106,6 +1503,130 @@ def _bar_chart(data, t='light'):
             tickprefix=CEDI, tickfont=dict(size=10, color=th['tick']),
             fixedrange=True, title=None,
         ),
+    )
+    return fig
+
+
+def _donut_chart(data, t='light'):
+    th = THEME[t]
+    ps = (data.dropna(subset=['product', 'sales'])
+              .groupby('product', as_index=False)['sales']
+              .sum().sort_values('sales', ascending=False).head(10))
+    if ps.empty:
+        return empty_fig(t)
+    fig = go.Figure(go.Pie(
+        labels=ps['product'], values=ps['sales'],
+        hole=0.52,
+        textinfo='percent',
+        hovertemplate=f'%{{label}}<br>{CEDI}%{{value:,.0f}}<br>%{{percent}}<extra></extra>',
+        marker=dict(
+            colors=px.colors.sequential.Purples_r[:len(ps)] if len(ps) <= 9
+                   else px.colors.qualitative.Pastel,
+            line=dict(color=th['card_bg'], width=2),
+        ),
+        textfont=dict(size=11, color=th['text']),
+    ))
+    fig.update_layout(
+        paper_bgcolor=th['paper_bg'],
+        height=CHART_H,
+        margin=dict(l=10, r=10, t=10, b=10),
+        legend=dict(font=dict(color=th['text'], size=10),
+                    bgcolor='rgba(0,0,0,0)', orientation='v',
+                    yanchor='middle', y=0.5, xanchor='left', x=1.02),
+        showlegend=True,
+        hoverlabel=dict(bgcolor=th['card_bg'], font_color=th['text']),
+        annotations=[dict(
+            text=f'<b>{fmt_cedi(ps["sales"].sum())}</b>',
+            x=0.5, y=0.5, font=dict(size=13, color=th['text']),
+            showarrow=False, xanchor='center',
+        )],
+    )
+    return fig
+
+
+def _mom_chart(data, t='light'):
+    th = THEME[t]
+    if data.empty or data['date'].dropna().empty:
+        return empty_fig(t)
+    now = data['date'].max()
+    cur_start  = now.replace(day=1)
+    prev_end   = cur_start - timedelta(days=1)
+    prev_start = prev_end.replace(day=1)
+
+    cur  = data[data['date'] >= cur_start].groupby('product')['sales'].sum()
+    prev = data[(data['date'] >= prev_start) & (data['date'] <= prev_end)].groupby('product')['sales'].sum()
+
+    products = list(set(cur.index.tolist()) | set(prev.index.tolist()))
+    if not products:
+        return empty_fig(t)
+
+    df_mom = pd.DataFrame({
+        'product': products,
+        'This Month': [cur.get(p, 0) for p in products],
+        'Last Month': [prev.get(p, 0) for p in products],
+    })
+    df_mom['_total'] = df_mom['This Month'] + df_mom['Last Month']
+    df_mom = df_mom.nlargest(8, '_total').sort_values('This Month', ascending=False)
+
+    fig = go.Figure()
+    fig.add_bar(name='Last Month', x=df_mom['product'], y=df_mom['Last Month'],
+                marker_color='rgba(102,126,234,0.45)',
+                hovertemplate=f'Last Month<br>%{{x}}<br>{CEDI}%{{y:,.0f}}<extra></extra>')
+    fig.add_bar(name='This Month', x=df_mom['product'], y=df_mom['This Month'],
+                marker_color=COLORS['primary'],
+                hovertemplate=f'This Month<br>%{{x}}<br>{CEDI}%{{y:,.0f}}<extra></extra>')
+    fig.update_layout(
+        barmode='group',
+        plot_bgcolor=th['plot_bg'], paper_bgcolor=th['paper_bg'], height=CHART_H,
+        margin=dict(l=60, r=16, t=12, b=56),
+        legend=dict(font=dict(color=th['text'], size=10), bgcolor='rgba(0,0,0,0)',
+                    orientation='h', yanchor='bottom', y=1.02, xanchor='right', x=1),
+        hoverlabel=dict(bgcolor=th['card_bg'], font_color=th['text']),
+        xaxis=dict(showgrid=False, tickfont=dict(size=10, color=th['tick']),
+                   tickangle=-25, title=None, fixedrange=True),
+        yaxis=dict(showgrid=True, gridcolor=th['grid'], griddash=th['grid_dash'],
+                   zeroline=False, tickprefix=CEDI, tickfont=dict(size=10, color=th['tick']),
+                   fixedrange=True, title=None),
+    )
+    return fig
+
+
+def _heatmap_chart(data, t='light'):
+    th = THEME[t]
+    if data.empty or data['date'].dropna().empty:
+        return empty_fig(t)
+    df = data.dropna(subset=['date', 'sales']).copy()
+    df['dow']  = df['date'].dt.dayofweek          # 0=Mon
+    df['week'] = df['date'].dt.isocalendar().week.astype(int)
+
+    pivot = df.groupby(['week', 'dow'])['sales'].sum().reset_index()
+    dow_names = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
+
+    weeks = sorted(pivot['week'].unique())
+    z = []
+    for dow_i in range(7):
+        row = []
+        for w in weeks:
+            val = pivot[(pivot['week'] == w) & (pivot['dow'] == dow_i)]['sales']
+            row.append(float(val.values[0]) if not val.empty else 0)
+        z.append(row)
+
+    fig = go.Figure(go.Heatmap(
+        z=z,
+        x=[f'W{w}' for w in weeks],
+        y=dow_names,
+        colorscale=[[0, th['plot_bg']], [0.001, 'rgba(102,126,234,0.15)'],
+                    [0.5, COLORS['primary']], [1, COLORS['secondary']]],
+        hovertemplate='Week %{x} · %{y}<br>' + f'{CEDI}' + '%{z:,.0f}<extra></extra>',
+        showscale=True,
+        colorbar=dict(tickfont=dict(color=th['tick']), thickness=12, len=0.8),
+    ))
+    fig.update_layout(
+        plot_bgcolor=th['plot_bg'], paper_bgcolor=th['paper_bg'], height=CHART_H,
+        margin=dict(l=50, r=60, t=12, b=44),
+        xaxis=dict(tickfont=dict(size=9, color=th['tick']), title=None, fixedrange=True),
+        yaxis=dict(tickfont=dict(size=10, color=th['tick']), title=None, fixedrange=True),
+        hoverlabel=dict(bgcolor=th['card_bg'], font_color=th['text']),
     )
     return fig
 
