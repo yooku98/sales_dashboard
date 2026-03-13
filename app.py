@@ -1520,8 +1520,7 @@ def _donut_chart(data, t='light'):
         textinfo='percent',
         hovertemplate=f'%{{label}}<br>{CEDI}%{{value:,.0f}}<br>%{{percent}}<extra></extra>',
         marker=dict(
-            colors=px.colors.sequential.Purples_r[:len(ps)] if len(ps) <= 9
-                   else px.colors.qualitative.Pastel,
+            colors=['#667eea','#10b981','#f59e0b','#ef4444','#06b6d4','#f97316','#8b5cf6','#ec4899','#14b8a6','#84cc16'][:len(ps)],
             line=dict(color=th['card_bg'], width=2),
         ),
         textfont=dict(size=11, color=th['text']),
