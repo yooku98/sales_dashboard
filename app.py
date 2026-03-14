@@ -1884,30 +1884,19 @@ def _heatmap_chart(data, t='light'):
 
 
 # ── Clientside tab switching ───────────────────────────────────────────────────
-app.clientside_callback(
-    """
-    function(n_sales, n_exp) {
-        var triggered = window.dash_clientside.callback_context.triggered;
-        var tab = 'sales';
-        if (triggered && triggered.length > 0) {
-            tab = triggered[0].prop_id.includes('expenses') ? 'expenses' : 'sales';
-        }
-        document.querySelectorAll('.tab-panel').forEach(function(p) {
-            p.classList.toggle('active', p.id === 'panel-' + tab);
-        });
-        document.querySelectorAll('.main-tabs .tab-btn').forEach(function(b) {
-            b.classList.toggle('active',
-                (tab === 'sales' && b.id === 'btn-sales') ||
-                (tab === 'expenses' && b.id === 'btn-expenses'));
-        });
-        return window.dash_clientside.no_update;
-    }
-    """,
-    Output('btn-sales', 'n_clicks'),
-    Input('btn-sales', 'n_clicks'),
-    Input('btn-expenses', 'n_clicks'),
+@app.callback(
+    Output('panel-sales',    'className'),
+    Output('panel-expenses', 'className'),
+    Output('btn-sales',      'className'),
+    Output('btn-expenses',   'className'),
+    Input('btn-sales',       'n_clicks'),
+    Input('btn-expenses',    'n_clicks'),
     prevent_initial_call=True,
 )
+def switch_main_tab(_s, _e):
+    if ctx.triggered_id == 'btn-expenses':
+        return 'tab-panel', 'tab-panel active', 'tab-btn', 'tab-btn active'
+    return 'tab-panel active', 'tab-panel', 'tab-btn active', 'tab-btn'
 
 # ── Expense upload/manual tab switcher ────────────────────────────────────────
 @app.callback(
