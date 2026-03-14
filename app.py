@@ -323,6 +323,63 @@ input#signup-email:focus, input#signup-password:focus {{
   box-shadow: 0 8px 40px rgba(0,0,0,0.3);
   color: var(--text, #1f2937);
 }}
+
+/* ── Top nav tabs ── */
+#top-nav {{
+  display: flex; gap: 0; background: rgba(255,255,255,0.12);
+  border-radius: 10px; padding: 4px; margin-top: 12px;
+  width: fit-content;
+}}
+.nav-tab {{
+  padding: 8px 22px; border-radius: 8px; border: none; cursor: pointer;
+  font-size: 0.9em; font-weight: 600; transition: all 0.18s;
+  color: rgba(255,255,255,0.75); background: transparent;
+}}
+.nav-tab.active {{
+  background: white; color: #667eea;
+}}
+
+/* Expense stats grid mirrors sales */
+#exp-stats-cards {{
+  display: grid; grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 14px; margin-bottom: 18px;
+}}
+@media (max-width: 860px) {{ #exp-stats-cards {{ grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }} }}
+#exp-charts-row {{
+  display: grid; grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px; margin-bottom: 18px;
+}}
+#exp-charts-row-bottom {{
+  display: grid; grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px; margin-bottom: 18px;
+}}
+@media (max-width: 760px) {{
+  #exp-charts-row {{ grid-template-columns: 1fr; }}
+  #exp-charts-row-bottom {{ grid-template-columns: 1fr; }}
+}}
+#exp-manual-form-grid {{
+  display: grid;
+  grid-template-columns: minmax(0,1fr) minmax(0,1fr) minmax(0,1fr) minmax(0,1fr) auto;
+  gap: 14px; align-items: end; margin-bottom: 14px;
+}}
+#exp-manual-form-grid > div {{ min-width: 0; }}
+@media (max-width: 800px) {{ #exp-manual-form-grid {{ grid-template-columns: minmax(0,1fr) minmax(0,1fr); }} }}
+@media (max-width: 420px) {{ #exp-manual-form-grid {{ grid-template-columns: 1fr; }} }}
+#exp-filter-bar {{
+  background: var(--card-bg, white);
+  border: 1px solid var(--card-border, #e5e7eb);
+  border-radius: 14px; padding: 18px 20px;
+  box-shadow: 0 2px 10px rgba(0,0,0,0.08); margin-bottom: 18px;
+  display: flex; flex-wrap: wrap; gap: 16px; align-items: flex-end;
+}}
+#exp-filter-bar > div {{ flex: 1; min-width: 160px; }}
+@media (max-width: 600px) {{ #exp-filter-bar > div {{ min-width: 100%; }} }}
+#exp-budget-card {{
+  background: var(--card-bg, white);
+  border: 1px solid var(--card-border, #e5e7eb);
+  border-radius: 14px; padding: 20px 24px;
+  box-shadow: 0 2px 10px rgba(0,0,0,0.08); margin-bottom: 18px;
+}}
 </style>
 """
 
@@ -441,6 +498,76 @@ def delete_user_data(user_id: str):
         supabase.table("sales_records").delete().eq("user_id", user_id).execute()
     except Exception as e:
         print(f"[delete_user_data] {e}")
+
+
+# ── Expense Supabase helpers ───────────────────────────────────────────────────
+def load_expense_data(user_id: str) -> list:
+    try:
+        res = supabase.table("expense_records").select("*").eq("user_id", user_id).execute()
+        return res.data or []
+    except Exception as e:
+        print(f"[load_expense_data] {e}")
+        return []
+
+def insert_expense_rows(user_id: str, df: pd.DataFrame):
+    for _, row in df.iterrows():
+        try:
+            supabase.table("expense_records").insert({
+                "user_id":  user_id,
+                "date":     row["date"],
+                "vendor":   row["vendor"],
+                "amount":   row["amount"],
+                "category": row.get("category", ""),
+            }).execute()
+        except Exception as e:
+            print(f"[insert_expense_rows] {e}")
+
+def delete_expense_data(user_id: str):
+    try:
+        supabase.table("expense_records").delete().eq("user_id", user_id).execute()
+    except Exception as e:
+        print(f"[delete_expense_data] {e}")
+
+def expense_records_to_df(records):
+    if not records:
+        return pd.DataFrame(columns=['date', 'vendor', 'amount', 'category'])
+    df = pd.DataFrame(records)
+    df = clean_col_names(df)
+    for col in ['date', 'vendor', 'amount', 'category']:
+        if col not in df.columns:
+            df[col] = None
+    df = df[['date', 'vendor', 'amount', 'category']].copy()
+    df['amount']   = pd.to_numeric(df['amount'], errors='coerce')
+    df['date']     = pd.to_datetime(df['date'], errors='coerce')
+    df['category'] = df['category'].fillna('').astype(str)
+    df = df.dropna(subset=['amount'])
+    df = df[df['vendor'].notna() & (df['vendor'].astype(str).str.strip() != '')]
+    return df.reset_index(drop=True)
+
+def parse_expense_file(contents, filename):
+    if not contents or not filename:
+        return None
+    try:
+        _ct, b64 = contents.split(',', 1)
+        decoded = base64.b64decode(b64)
+        if filename.lower().endswith('.csv'):
+            raw = pd.read_csv(io.StringIO(decoded.decode('utf-8', errors='ignore')), skip_blank_lines=True)
+        elif filename.lower().endswith(('.xlsx', '.xls')):
+            raw = pd.read_excel(io.BytesIO(decoded))
+        else:
+            return None
+        raw = clean_col_names(raw)
+        for col in ['date', 'vendor', 'amount', 'category']:
+            if col not in raw.columns:
+                raw[col] = ''
+        raw = raw[['date', 'vendor', 'amount', 'category']].copy()
+        raw = raw.dropna(how='all')
+        raw['amount'] = pd.to_numeric(raw['amount'], errors='coerce')
+        raw['date']   = pd.to_datetime(raw['date'], errors='coerce').dt.strftime('%Y-%m-%d')
+        return raw.dropna(subset=['amount'])
+    except Exception as e:
+        print(f'[parse_expense_file] {e}')
+        return None
 
 # ── Data helpers ───────────────────────────────────────────────────────────────
 def clean_col_names(df):
@@ -682,9 +809,15 @@ def dashboard_layout():
                 html.Div(style={'marginTop': '8px'}, children=[
                     html.Span(id='user-greeting',
                               style={'fontSize': '0.95em', 'opacity': '0.95', 'fontWeight': '500'}),
-                    html.P(f'Track sales in Ghana Cedis ({CEDI}) \u2014 data saved to Supabase',
+                    html.P(f'Track sales & expenses in Ghana Cedis ({CEDI}) \u2014 data saved to Supabase',
                            className='hdr-sub',
                            style={'margin': '3px 0 0', 'fontSize': '0.85em', 'opacity': '0.75'}),
+                ]),
+                html.Div(id='top-nav', children=[
+                    html.Button('\U0001f4ca Sales', id='nav-sales-btn', n_clicks=1,
+                                className='nav-tab active'),
+                    html.Button('\U0001f4b8 Expenses', id='nav-expenses-btn', n_clicks=0,
+                                className='nav-tab'),
                 ]),
             ]),
             html.Div(id='signout-toast', style={'display': 'none'}),
@@ -919,8 +1052,205 @@ def dashboard_layout():
                              style={'listStyle': 'none', 'padding': 0, 'margin': 0},
                          )]),
             ]),
+            expense_layout_content(),
         ],
     )
+
+
+def expense_layout_content():
+    return html.Div(id='expense-wrapper', children=[
+        html.Div(id='exp-main-container', style={'maxWidth': '1400px', 'margin': '0 auto', 'padding': '0 20px'}, children=[
+
+            # Data entry card
+            html.Div(className='input-card', children=[
+                html.Div(className='tab-row', children=[
+                    html.Button('\U0001f4e4 Upload File', id='exp-tab-upload', n_clicks=1,
+                                style={**BTN_BASE, 'padding': '10px 20px',
+                                       'backgroundColor': COLORS['danger'], 'color': 'white'}),
+                    html.Button('\u270f\ufe0f Enter Manually', id='exp-tab-manual', n_clicks=0,
+                                style={**BTN_BASE, 'padding': '10px 20px',
+                                       'border': f'2px solid {COLORS["danger"]}',
+                                       'backgroundColor': 'white', 'color': COLORS['danger']}),
+                ]),
+                html.Div(id='exp-upload-section', children=[
+                    html.H3('\U0001f4e4 Upload Expense Data',
+                            style={'color': 'var(--text, #1f2937)', 'fontSize': '1.2em', 'margin': '0 0 14px'}),
+                    dcc.Upload(id='exp-upload-data', multiple=False,
+                               style={
+                                   'height': '130px', 'borderWidth': '2px', 'borderStyle': 'dashed',
+                                   'borderRadius': '10px', 'borderColor': COLORS['danger'],
+                                   'cursor': 'pointer',
+                                   'display': 'flex', 'alignItems': 'center', 'justifyContent': 'center',
+                                   'textAlign': 'center',
+                               },
+                               children=html.Div([
+                                   html.Div('\U0001f4c1', style={'fontSize': '2.2em', 'marginBottom': '6px'}),
+                                   html.Div('Drag and Drop or Tap to Select',
+                                            style={'fontSize': '1em', 'fontWeight': '600'}),
+                                   html.Div('CSV or Excel (.xlsx) \u2014 columns: date, vendor, amount, category (optional)',
+                                            style={'fontSize': '0.82em', 'color': '#6b7280', 'marginTop': '3px'}),
+                               ])),
+                ]),
+                html.Div(id='exp-manual-section', style={'display': 'none'}, children=[
+                    html.H3('\u270f\ufe0f Enter Expense',
+                            style={'color': 'var(--text, #1f2937)', 'fontSize': '1.2em', 'margin': '0 0 14px'}),
+                    html.Div(id='exp-manual-form-grid', children=[
+                        html.Div([
+                            html.Label('Date', style=LABEL_STYLE),
+                            dcc.DatePickerSingle(id='exp-input-date',
+                                                 date=datetime.today().strftime('%Y-%m-%d'),
+                                                 display_format='YYYY-MM-DD',
+                                                 style={'width': '100%'}),
+                        ]),
+                        html.Div([
+                            html.Label('Vendor / Description', style=LABEL_STYLE),
+                            dcc.Input(id='exp-input-vendor', type='text',
+                                      placeholder='e.g. Electricity bill', style=INPUT_STYLE),
+                        ]),
+                        html.Div([
+                            html.Label(f'Amount ({CEDI})', style=LABEL_STYLE),
+                            dcc.Input(id='exp-input-amount', type='number', min=0,
+                                      placeholder='0.00', style=INPUT_STYLE),
+                        ]),
+                        html.Div([
+                            html.Label('Category (optional)', style=LABEL_STYLE),
+                            dcc.Input(id='exp-input-category', type='text',
+                                      placeholder='e.g. Utilities', style=INPUT_STYLE),
+                        ]),
+                        html.Div([
+                            html.Label('\u00a0', style={**LABEL_STYLE, 'visibility': 'hidden'}),
+                            html.Button('\u2795 Add', id='exp-add-btn', n_clicks=0,
+                                        style={**BTN_BASE, 'width': '100%', 'padding': '10px 18px',
+                                               'backgroundColor': COLORS['danger'], 'color': 'white'}),
+                        ]),
+                    ]),
+                    html.Button('\U0001f5d1\ufe0f Clear All Expenses', id='exp-clear-btn', n_clicks=0,
+                                style={**BTN_BASE, 'padding': '9px 18px', 'marginTop': '10px',
+                                       'backgroundColor': '#6b7280', 'color': 'white'}),
+                ]),
+                html.Div(id='exp-status-message',
+                         style={'marginTop': '12px', 'padding': '10px 14px', 'borderRadius': '8px',
+                                'textAlign': 'center', 'fontSize': '0.9em', 'display': 'none'}),
+            ]),
+
+            # Filter bar
+            html.Div(id='exp-filter-bar', children=[
+                html.Div([
+                    html.Label('\U0001f4c5 Date Range', style={**LABEL_STYLE, 'marginBottom': '6px'}),
+                    dcc.DatePickerRange(id='exp-filter-date-range', display_format='YYYY-MM-DD',
+                                       style={'width': '100%'}),
+                ]),
+                html.Div([
+                    html.Label('\U0001f3f7\ufe0f Vendor(s)', style={**LABEL_STYLE, 'marginBottom': '6px'}),
+                    dcc.Dropdown(id='exp-filter-vendors', multi=True,
+                                 placeholder='All vendors\u2026', style={'fontSize': '0.93em'}),
+                ]),
+                html.Div([
+                    html.Label('\U0001f4c2 Category', style={**LABEL_STYLE, 'marginBottom': '6px'}),
+                    dcc.Dropdown(id='exp-filter-categories', multi=True,
+                                 placeholder='All categories\u2026', style={'fontSize': '0.93em'}),
+                ]),
+                html.Div([
+                    html.Label('\u00a0', style={**LABEL_STYLE, 'marginBottom': '6px', 'visibility': 'hidden'}),
+                    html.Button('\u21ba Reset Filters', id='exp-reset-filters-btn', n_clicks=0,
+                                style={**BTN_BASE, 'width': '100%', 'padding': '10px 16px',
+                                       'backgroundColor': '#e5e7eb', 'color': '#374151'}),
+                ], style={'maxWidth': '140px'}),
+            ]),
+
+            # Budget card
+            html.Div(id='exp-budget-card', children=[
+                html.Div(style={'display': 'flex', 'justifyContent': 'space-between',
+                                'alignItems': 'center', 'flexWrap': 'wrap', 'gap': '12px'}, children=[
+                    html.Div([
+                        html.H3('\U0001f3af Monthly Expense Budget', style={
+                            'margin': '0 0 4px', 'fontSize': '1.05em',
+                            'color': 'var(--text, #1f2937)'}),
+                        html.Div(id='exp-budget-progress-text',
+                                 style={'fontSize': '0.85em', 'color': 'var(--sub-text, #6b7280)'}),
+                    ]),
+                    html.Div(style={'display': 'flex', 'gap': '10px', 'alignItems': 'center'}, children=[
+                        html.Label(f'Budget ({CEDI})', style={**LABEL_STYLE, 'margin': '0', 'whiteSpace': 'nowrap'}),
+                        dcc.Input(id='exp-budget-input', type='number', min=0,
+                                  placeholder='e.g. 20000',
+                                  style={**INPUT_STYLE, 'width': '160px', 'margin': '0'}),
+                    ]),
+                ]),
+                html.Div(className='progress-outer', children=[
+                    html.Div(id='exp-budget-progress-bar', className='progress-inner',
+                             style={'width': '0%', 'backgroundColor': COLORS['danger']}),
+                ]),
+            ]),
+
+            # Stat cards
+            html.Div(id='exp-stats-cards'),
+
+            # Charts top row
+            html.Div(id='exp-charts-row', children=[
+                html.Div(className='chart-card', children=[
+                    html.H3('\U0001f4c9 Expense Trend',
+                            style={'color': 'var(--text, #1f2937)', 'margin': '0 0 2px', 'fontSize': '1.1em'}),
+                    html.P('Daily totals \u2014 all vendors',
+                           style={'color': '#9ca3af', 'fontSize': '0.78em', 'margin': '0 0 12px'}),
+                    html.Div(className='graph-wrap', children=[
+                        dcc.Graph(id='exp-line-chart', style={'height': '100%'},
+                                  config={'displayModeBar': False, 'responsive': True}),
+                    ]),
+                ]),
+                html.Div(className='chart-card', children=[
+                    html.H3('\U0001f3c6 Top Vendors',
+                            style={'color': 'var(--text, #1f2937)', 'margin': '0 0 2px', 'fontSize': '1.1em'}),
+                    html.P(f'Total {CEDI} by vendor (top 10)',
+                           style={'color': '#9ca3af', 'fontSize': '0.78em', 'margin': '0 0 12px'}),
+                    html.Div(className='graph-wrap', children=[
+                        dcc.Graph(id='exp-bar-chart', style={'height': '100%'},
+                                  config={'displayModeBar': False, 'responsive': True}),
+                    ]),
+                ]),
+            ]),
+
+            # Charts bottom row
+            html.Div(id='exp-charts-row-bottom', children=[
+                html.Div(className='chart-card', children=[
+                    html.H3('\U0001f967 Expense Share',
+                            style={'color': 'var(--text, #1f2937)', 'margin': '0 0 2px', 'fontSize': '1.1em'}),
+                    html.P('Vendor share of total expenses',
+                           style={'color': '#9ca3af', 'fontSize': '0.78em', 'margin': '0 0 12px'}),
+                    html.Div(className='graph-wrap', children=[
+                        dcc.Graph(id='exp-donut-chart', style={'height': '100%'},
+                                  config={'displayModeBar': False, 'responsive': True}),
+                    ]),
+                ]),
+                html.Div(className='chart-card', children=[
+                    html.H3('\U0001f4ca Month-over-Month',
+                            style={'color': 'var(--text, #1f2937)', 'margin': '0 0 2px', 'fontSize': '1.1em'}),
+                    html.P('Current vs previous month per vendor (top 8)',
+                           style={'color': '#9ca3af', 'fontSize': '0.78em', 'margin': '0 0 12px'}),
+                    html.Div(className='graph-wrap', children=[
+                        dcc.Graph(id='exp-mom-chart', style={'height': '100%'},
+                                  config={'displayModeBar': False, 'responsive': True}),
+                    ]),
+                ]),
+            ]),
+
+            # Heatmap
+            html.Div(style={'marginBottom': '18px'}, children=[
+                html.Div(className='chart-card', children=[
+                    html.H3('\U0001f321\ufe0f Expense Heatmap',
+                            style={'color': 'var(--text, #1f2937)', 'margin': '0 0 2px', 'fontSize': '1.1em'}),
+                    html.P('Expenses by day-of-week and week number',
+                           style={'color': '#9ca3af', 'fontSize': '0.78em', 'margin': '0 0 12px'}),
+                    html.Div(className='graph-wrap', children=[
+                        dcc.Graph(id='exp-heatmap-chart', style={'height': '100%'},
+                                  config={'displayModeBar': False, 'responsive': True}),
+                    ]),
+                ]),
+            ]),
+
+            # Table
+            html.Div(id='exp-table-container', style={'marginBottom': '24px'}),
+        ]),
+    ])
 
 # ── Root layout ────────────────────────────────────────────────────────────────
 app.layout = html.Div(id='app-root', children=[
@@ -1616,6 +1946,468 @@ def _heatmap_chart(data, t='light'):
         y=dow_names,
         colorscale=[[0, th['plot_bg']], [0.001, 'rgba(102,126,234,0.15)'],
                     [0.5, COLORS['primary']], [1, COLORS['secondary']]],
+        hovertemplate='Week %{x} · %{y}<br>' + f'{CEDI}' + '%{z:,.0f}<extra></extra>',
+        showscale=True,
+        colorbar=dict(tickfont=dict(color=th['tick']), thickness=12, len=0.8),
+    ))
+    fig.update_layout(
+        plot_bgcolor=th['plot_bg'], paper_bgcolor=th['paper_bg'], height=CHART_H,
+        margin=dict(l=50, r=60, t=12, b=44),
+        xaxis=dict(tickfont=dict(size=9, color=th['tick']), title=None, fixedrange=True),
+        yaxis=dict(tickfont=dict(size=10, color=th['tick']), title=None, fixedrange=True),
+        hoverlabel=dict(bgcolor=th['card_bg'], font_color=th['text']),
+    )
+    return fig
+
+
+
+# ── Nav tab switcher ───────────────────────────────────────────────────────────
+@app.callback(
+    Output('dashboard-wrapper', 'style', allow_duplicate=True),
+    Output('expense-wrapper',   'style'),
+    Output('nav-sales-btn',     'className'),
+    Output('nav-expenses-btn',  'className'),
+    Input('nav-sales-btn',      'n_clicks'),
+    Input('nav-expenses-btn',   'n_clicks'),
+    State('theme-store',        'data'),
+    prevent_initial_call=True,
+)
+def switch_main_tab(_s, _e, theme):
+    t = theme or 'dark'
+    th = THEME[t]
+    base_style = {
+        'backgroundColor': th['page_bg'], 'minHeight': '100vh',
+        '--card-bg': th['card_bg'], '--card-border': th['card_border'],
+        '--text': th['text'], '--sub-text': th['sub_text'],
+        '--page-bg': th['page_bg'], '--input-bg': th['input_bg'],
+        '--input-text': th['input_text'], '--input-border': th['input_border'],
+    }
+    hide = {**base_style, 'display': 'none'}
+    show = base_style
+    if ctx.triggered_id == 'nav-expenses-btn':
+        return hide, show, 'nav-tab', 'nav-tab active'
+    return show, hide, 'nav-tab active', 'nav-tab'
+
+
+# ── Expense tab switcher ───────────────────────────────────────────────────────
+@app.callback(
+    Output('exp-upload-section', 'style'),
+    Output('exp-manual-section', 'style'),
+    Output('exp-tab-upload',     'style'),
+    Output('exp-tab-manual',     'style'),
+    Input('exp-tab-upload',      'n_clicks'),
+    Input('exp-tab-manual',      'n_clicks'),
+)
+def switch_exp_tabs(_u, _m):
+    upload_active = ctx.triggered_id != 'exp-tab-manual'
+    active   = {**BTN_BASE, 'padding': '10px 20px',
+                'backgroundColor': COLORS['danger'], 'color': 'white'}
+    inactive = {**BTN_BASE, 'padding': '10px 20px',
+                'border': f'2px solid {COLORS["danger"]}',
+                'backgroundColor': 'transparent', 'color': COLORS['danger']}
+    if upload_active:
+        return {'display': 'block'}, {'display': 'none'}, active, inactive
+    return {'display': 'none'}, {'display': 'block'}, inactive, active
+
+
+# ── Expense data management ────────────────────────────────────────────────────
+@app.callback(
+    Output('exp-status-message',  'children'),
+    Output('exp-status-message',  'style'),
+    Output('exp-input-vendor',    'value'),
+    Output('exp-input-amount',    'value'),
+    Output('exp-input-category',  'value'),
+    Input('exp-add-btn',          'n_clicks'),
+    Input('exp-clear-btn',        'n_clicks'),
+    Input('exp-upload-data',      'contents'),
+    State('exp-input-date',       'date'),
+    State('exp-input-vendor',     'value'),
+    State('exp-input-amount',     'value'),
+    State('exp-input-category',   'value'),
+    State('exp-upload-data',      'filename'),
+    State('session-store',        'data'),
+    prevent_initial_call=True,
+)
+def manage_expense_data(add_clicks, clear_clicks, upload_contents,
+                        date, vendor, amount, category, filename, session):
+    user_id = (session or {}).get('user_id')
+    trigger = ctx.triggered_id
+    if not user_id:
+        raise PreventUpdate
+
+    def ok(msg):
+        return ({'marginTop': '12px', 'padding': '10px 14px', 'borderRadius': '8px',
+                 'textAlign': 'center', 'fontSize': '0.9em', 'display': 'block',
+                 'backgroundColor': '#d1fae5', 'color': '#065f46',
+                 'border': f'1px solid {COLORS["success"]}'}, msg)
+    def err(msg):
+        return ({'marginTop': '12px', 'padding': '10px 14px', 'borderRadius': '8px',
+                 'textAlign': 'center', 'fontSize': '0.9em', 'display': 'block',
+                 'backgroundColor': '#fee2e2', 'color': '#991b1b',
+                 'border': f'1px solid {COLORS["danger"]}'}, msg)
+
+    if trigger == 'exp-upload-data':
+        if not upload_contents or not filename:
+            raise PreventUpdate
+        uploaded = parse_expense_file(upload_contents, filename)
+        if uploaded is not None and not uploaded.empty:
+            insert_expense_rows(user_id, uploaded)
+            sty, msg = ok(f'\u2705 Loaded {filename} \u2014 {len(uploaded)} expense rows saved')
+            return msg, sty, no_update, no_update, no_update
+        sty, msg = err(f'\u274c Could not parse "{filename}". Use CSV/Excel with date, vendor, amount columns.')
+        return msg, sty, no_update, no_update, no_update
+
+    if trigger == 'exp-add-btn':
+        if not date or not vendor or not str(vendor).strip() or amount is None:
+            sty, msg = err('\u274c Fill in all fields (Date, Vendor, Amount).')
+            return msg, sty, vendor, amount, category
+        v = float(amount)
+        if v < 0:
+            sty, msg = err('\u274c Amount cannot be negative.')
+            return msg, sty, vendor, amount, category
+        new_row = pd.DataFrame({
+            'date':     [pd.to_datetime(date).strftime('%Y-%m-%d')],
+            'vendor':   [str(vendor).strip()],
+            'amount':   [v],
+            'category': [str(category).strip() if category else ''],
+        })
+        insert_expense_rows(user_id, new_row)
+        sty, msg = ok(f'\u2705 Added {str(vendor).strip()} \u2014 {fmt_cedi(v)} on {date}')
+        return msg, sty, '', None, ''
+
+    if trigger == 'exp-clear-btn':
+        delete_expense_data(user_id)
+        sty, msg = ok('\u2705 All expense data cleared.')
+        return msg, sty, '', None, ''
+
+    raise PreventUpdate
+
+
+# ── Expense filter population ──────────────────────────────────────────────────
+@app.callback(
+    Output('exp-filter-vendors',    'options'),
+    Output('exp-filter-categories', 'options'),
+    Output('exp-filter-date-range', 'min_date_allowed'),
+    Output('exp-filter-date-range', 'max_date_allowed'),
+    Output('exp-filter-date-range', 'start_date'),
+    Output('exp-filter-date-range', 'end_date'),
+    Input('session-store',          'data'),
+    Input('exp-reset-filters-btn',  'n_clicks'),
+)
+def populate_expense_filters(session, _reset):
+    user_id = (session or {}).get('user_id')
+    if not user_id:
+        return [], [], None, None, None, None
+    records = load_expense_data(user_id)
+    data = expense_records_to_df(records)
+    if data.empty:
+        return [], [], None, None, None, None
+    vendors    = sorted(data['vendor'].dropna().unique().tolist())
+    categories = sorted([c for c in data['category'].unique() if c])
+    min_d = data['date'].min().strftime('%Y-%m-%d')
+    max_d = data['date'].max().strftime('%Y-%m-%d')
+    return (
+        [{'label': v, 'value': v} for v in vendors],
+        [{'label': c, 'value': c} for c in categories],
+        min_d, max_d, min_d, max_d,
+    )
+
+
+# ── Expense dashboard update ───────────────────────────────────────────────────
+@app.callback(
+    Output('exp-line-chart',          'figure'),
+    Output('exp-bar-chart',           'figure'),
+    Output('exp-donut-chart',         'figure'),
+    Output('exp-mom-chart',           'figure'),
+    Output('exp-heatmap-chart',       'figure'),
+    Output('exp-stats-cards',         'children'),
+    Output('exp-table-container',     'children'),
+    Output('exp-budget-progress-bar', 'style'),
+    Output('exp-budget-progress-text','children'),
+    Input('session-store',            'data'),
+    Input('theme-store',              'data'),
+    Input('exp-filter-date-range',    'start_date'),
+    Input('exp-filter-date-range',    'end_date'),
+    Input('exp-filter-vendors',       'value'),
+    Input('exp-filter-categories',    'value'),
+    Input('exp-budget-input',         'value'),
+)
+def update_expense_dashboard(session, theme,
+                              start_date, end_date, sel_vendors, sel_categories,
+                              budget_val):
+    t  = theme or 'dark'
+    th = THEME[t]
+    user_id = (session or {}).get('user_id')
+    if not user_id:
+        empty = empty_fig(t)
+        no_style = {'width': '0%', 'backgroundColor': COLORS['danger'], 'height': '100%', 'borderRadius': '9px'}
+        return empty, empty, empty, empty, empty, [], html.Div(), no_style, 'Log in to view expenses'
+
+    records   = load_expense_data(user_id)
+    full_data = expense_records_to_df(records)
+    data      = full_data.copy()
+
+    if not data.empty:
+        if start_date:
+            data = data[data['date'] >= pd.to_datetime(start_date)]
+        if end_date:
+            data = data[data['date'] <= pd.to_datetime(end_date)]
+        if sel_vendors:
+            data = data[data['vendor'].isin(sel_vendors)]
+        if sel_categories:
+            data = data[data['category'].isin(sel_categories)]
+
+    def prev_total(df):
+        if df.empty or df['date'].dropna().empty:
+            return None, None
+        mn, mx = df['date'].min(), df['date'].max()
+        span   = (mx - mn).days or 1
+        pe = mn - timedelta(days=1)
+        ps = pe - timedelta(days=span)
+        prev = full_data[(full_data['date'] >= ps) & (full_data['date'] <= pe)]
+        return df['amount'].sum(), prev['amount'].sum() if not prev.empty else None
+
+    cur_total, prev_tot = prev_total(data)
+
+    if data.empty:
+        stats = [html.Div('\U0001f4ed No expense data yet \u2014 upload a file or enter manually.',
+                          style={'color': th['sub_text'], 'padding': '18px', 'textAlign': 'center',
+                                 'gridColumn': '1 / -1', 'background': th['card_bg'],
+                                 'borderRadius': '12px', 'boxShadow': '0 2px 8px rgba(0,0,0,0.07)'})]
+    else:
+        s = data['amount'].dropna()
+        prev_recs = full_data.copy()
+        if not data.empty and not data['date'].dropna().empty:
+            mn, mx = data['date'].min(), data['date'].max()
+            span   = (mx - mn).days or 1
+            pe = mn - timedelta(days=1)
+            ps = pe - timedelta(days=span)
+            prev_recs = full_data[(full_data['date'] >= ps) & (full_data['date'] <= pe)]
+        stats = [
+            stat_card('Total Expenses',  fmt_cedi(s.sum()),             '\U0001f4b8', COLORS['danger'],   th,
+                      trend_badge(s.sum(), prev_tot)),
+            stat_card('Average Expense', fmt_cedi(s.mean()),            '\U0001f4ca', COLORS['warning'],  th,
+                      trend_badge(s.mean(), prev_recs['amount'].mean() if not prev_recs.empty else None)),
+            stat_card('Vendors',         str(data['vendor'].nunique()), '\U0001f3eb', COLORS['primary'],  th,
+                      trend_badge(data['vendor'].nunique(),
+                                  prev_recs['vendor'].nunique() if not prev_recs.empty else None)),
+            stat_card('Records',         str(len(data)),                '\U0001f4dd', COLORS['secondary'],th,
+                      trend_badge(len(data), len(prev_recs) if not prev_recs.empty else None)),
+        ]
+
+    budget = float(budget_val) if budget_val else 0
+    actual = data['amount'].sum() if not data.empty else 0
+    if budget > 0:
+        pct       = min(actual / budget * 100, 100)
+        bar_color = COLORS['danger'] if pct >= 90 else (COLORS['warning'] if pct >= 60 else COLORS['success'])
+        prog_text = f'{fmt_cedi(actual)} of {fmt_cedi(budget)} ({pct:.1f}%)'
+    else:
+        pct, bar_color = 0, COLORS['danger']
+        prog_text = 'Set a budget above to track your spending'
+
+    prog_style = {'width': f'{pct:.1f}%', 'backgroundColor': bar_color,
+                  'height': '100%', 'borderRadius': '9px', 'transition': 'width 0.6s ease'}
+
+    if data.empty:
+        line_fig = donut_fig = bar_fig = mom_fig = heat_fig = empty_fig(t)
+    else:
+        clean = data.dropna(subset=['date', 'amount']).copy()
+        clean['_d'] = clean['date'].dt.normalize()
+        daily = (clean.groupby('_d', as_index=False)['amount']
+                      .sum().rename(columns={'_d': 'date', 'amount': 'sales'}).sort_values('date'))
+        line_fig  = empty_fig(t) if daily.empty else _exp_line_chart(daily, t)
+        bar_fig   = _exp_bar_chart(data, t)
+        donut_fig = _exp_donut_chart(data, t)
+        mom_fig   = _exp_mom_chart(data, t)
+        heat_fig  = _exp_heatmap_chart(data, t)
+
+    if data.empty:
+        tbl = html.Div('\U0001f4ed No expense data to display.',
+                       style={'color': '#6b7280', 'textAlign': 'center', 'padding': '20px'})
+    else:
+        disp = data.sort_values('date', ascending=False).copy()
+        disp['date']   = disp['date'].dt.strftime('%Y-%m-%d')
+        disp['amount'] = disp['amount'].round(2)
+        col_map = {'date': 'Date', 'vendor': 'Vendor', 'amount': f'Amount ({CEDI})', 'category': 'Category'}
+        tbl = html.Div(style={'backgroundColor': th['card_bg'], 'borderRadius': '14px',
+                              'padding': '22px', 'boxShadow': '0 2px 10px rgba(0,0,0,0.07)',
+                              'border': f'1px solid {th["card_border"]}'}, children=[
+            html.Div(className='tbl-hdr', children=[
+                html.H3('\U0001f4cb All Expense Records',
+                        style={'color': th['text'], 'margin': '0', 'fontSize': '1.1em'}),
+                html.Span(f'{len(data)} records',
+                          style={'backgroundColor': COLORS['danger'], 'color': 'white',
+                                 'padding': '3px 12px', 'borderRadius': '20px',
+                                 'fontSize': '0.8em', 'fontWeight': '600'}),
+            ]),
+            dash_table.DataTable(
+                id='exp-data-table', data=disp.to_dict('records'),
+                columns=[{'name': col_map.get(c, c.title()), 'id': c, 'editable': True}
+                         for c in disp.columns],
+                editable=True,
+                page_size=10, sort_action='native', filter_action='native',
+                style_table={'overflowX': 'auto', 'minWidth': '100%'},
+                style_cell={'textAlign': 'left', 'padding': '9px 12px', 'whiteSpace': 'nowrap',
+                            'fontFamily': "'Segoe UI', Tahoma, Geneva, Verdana, sans-serif",
+                            'fontSize': '0.88em', 'minWidth': '80px'},
+                style_header={'backgroundColor': COLORS['danger'], 'color': 'white',
+                              'fontWeight': '600', 'border': 'none', 'fontSize': '0.85em'},
+                style_data={'backgroundColor': th['card_bg'], 'color': th['text'],
+                            'border': f'1px solid {th["card_border"]}'},
+                style_filter={'backgroundColor': th['input_bg'], 'color': th['input_text'],
+                              'border': f'1px solid {th["input_border"]}',
+                              'fontFamily': "'Segoe UI', Tahoma, Geneva, Verdana, sans-serif",
+                              'fontSize': '0.85em'},
+                style_data_conditional=[
+                    {'if': {'row_index': 'odd'}, 'backgroundColor': th['plot_bg']},
+                    {'if': {'column_id': 'amount'}, 'textAlign': 'right', 'fontWeight': '600'},
+                ],
+                tooltip_delay=0, tooltip_duration=None,
+            ),
+        ])
+
+    return line_fig, bar_fig, donut_fig, mom_fig, heat_fig, stats, tbl, prog_style, prog_text
+
+
+# ── Expense chart builders ─────────────────────────────────────────────────────
+EXP_COLORS = ['#ef4444','#f97316','#f59e0b','#10b981','#06b6d4',
+               '#8b5cf6','#ec4899','#667eea','#14b8a6','#84cc16']
+
+def _exp_line_chart(daily, t='light'):
+    th = THEME[t]
+    fig = px.line(daily, x='date', y='sales', labels={'date': '', 'sales': ''})
+    fig.update_traces(
+        line=dict(color=COLORS['danger'], width=2.5, shape='spline'),
+        mode='lines+markers',
+        marker=dict(size=7, color=th['plot_bg'], line=dict(width=2.5, color=COLORS['danger'])),
+        fill='tozeroy', fillcolor='rgba(239,68,68,0.10)',
+        hovertemplate=f'%{{x|%b %d}}<br>{CEDI}%{{y:,.0f}}<extra></extra>',
+    )
+    fig.update_layout(
+        plot_bgcolor=th['plot_bg'], paper_bgcolor=th['paper_bg'], height=CHART_H,
+        margin=dict(l=60, r=16, t=12, b=44), hovermode='x unified',
+        hoverlabel=dict(bgcolor=th['card_bg'], font_color=th['text'], bordercolor=th['grid']),
+        xaxis=dict(showgrid=True, gridcolor=th['grid'], griddash=th['grid_dash'],
+                   showline=False, zeroline=False, tickformat='%b %d',
+                   tickfont=dict(size=10, color=th['tick']), fixedrange=True, title=None),
+        yaxis=dict(showgrid=True, gridcolor=th['grid'], griddash=th['grid_dash'],
+                   zeroline=False, showline=False, tickprefix=CEDI,
+                   tickfont=dict(size=10, color=th['tick']), fixedrange=True, title=None),
+    )
+    return fig
+
+def _exp_bar_chart(data, t='light'):
+    th = THEME[t]
+    ps = (data.dropna(subset=['vendor', 'amount'])
+              .groupby('vendor', as_index=False)['amount']
+              .sum().sort_values('amount', ascending=False).head(10))
+    if ps.empty:
+        return empty_fig(t)
+    bar_colors = [EXP_COLORS[i % len(EXP_COLORS)] for i in range(len(ps))]
+    fig = px.bar(ps, x='vendor', y='amount', labels={'vendor': '', 'amount': ''})
+    fig.update_traces(marker_color=bar_colors,
+                      hovertemplate=f'%{{x}}<br>{CEDI}%{{y:,.0f}}<extra></extra>',
+                      marker_line_width=0)
+    fig.update_layout(
+        plot_bgcolor=th['plot_bg'], paper_bgcolor=th['paper_bg'], height=CHART_H,
+        margin=dict(l=60, r=16, t=12, b=56),
+        hoverlabel=dict(bgcolor=th['card_bg'], font_color=th['text'], bordercolor=th['grid']),
+        xaxis=dict(showgrid=False, showline=False, zeroline=False,
+                   categoryorder='total descending', tickfont=dict(size=10, color=th['tick']),
+                   fixedrange=True, tickangle=-30, title=None),
+        yaxis=dict(showgrid=True, gridcolor=th['grid'], griddash=th['grid_dash'],
+                   zeroline=False, showline=False, tickprefix=CEDI,
+                   tickfont=dict(size=10, color=th['tick']), fixedrange=True, title=None),
+    )
+    return fig
+
+def _exp_donut_chart(data, t='light'):
+    th = THEME[t]
+    ps = (data.dropna(subset=['vendor', 'amount'])
+              .groupby('vendor', as_index=False)['amount']
+              .sum().sort_values('amount', ascending=False).head(10))
+    if ps.empty:
+        return empty_fig(t)
+    fig = go.Figure(go.Pie(
+        labels=ps['vendor'], values=ps['amount'], hole=0.52, textinfo='percent',
+        hovertemplate=f'%{{label}}<br>{CEDI}%{{value:,.0f}}<br>%{{percent}}<extra></extra>',
+        marker=dict(colors=EXP_COLORS[:len(ps)], line=dict(color=th['card_bg'], width=2)),
+        textfont=dict(size=11, color=th['text']),
+    ))
+    fig.update_layout(
+        paper_bgcolor=th['paper_bg'], height=CHART_H, margin=dict(l=10, r=10, t=10, b=10),
+        legend=dict(font=dict(color=th['text'], size=10), bgcolor='rgba(0,0,0,0)',
+                    orientation='v', yanchor='middle', y=0.5, xanchor='left', x=1.02),
+        showlegend=True,
+        hoverlabel=dict(bgcolor=th['card_bg'], font_color=th['text']),
+        annotations=[dict(text=f'<b>{fmt_cedi(ps["amount"].sum())}</b>',
+                          x=0.5, y=0.5, font=dict(size=13, color=th['text']),
+                          showarrow=False, xanchor='center')],
+    )
+    return fig
+
+def _exp_mom_chart(data, t='light'):
+    th = THEME[t]
+    if data.empty or data['date'].dropna().empty:
+        return empty_fig(t)
+    now        = data['date'].max()
+    cur_start  = now.replace(day=1)
+    prev_end   = cur_start - timedelta(days=1)
+    prev_start = prev_end.replace(day=1)
+    cur  = data[data['date'] >= cur_start].groupby('vendor')['amount'].sum()
+    prev = data[(data['date'] >= prev_start) & (data['date'] <= prev_end)].groupby('vendor')['amount'].sum()
+    vendors = list(set(cur.index.tolist()) | set(prev.index.tolist()))
+    if not vendors:
+        return empty_fig(t)
+    df_mom = pd.DataFrame({
+        'vendor': vendors,
+        'This Month': [cur.get(v, 0) for v in vendors],
+        'Last Month': [prev.get(v, 0) for v in vendors],
+    })
+    df_mom['_total'] = df_mom['This Month'] + df_mom['Last Month']
+    df_mom = df_mom.nlargest(8, '_total').sort_values('This Month', ascending=False)
+    fig = go.Figure()
+    fig.add_bar(name='Last Month', x=df_mom['vendor'], y=df_mom['Last Month'],
+                marker_color='#94a3b8',
+                hovertemplate=f'Last Month<br>%{{x}}<br>{CEDI}%{{y:,.0f}}<extra></extra>')
+    fig.add_bar(name='This Month', x=df_mom['vendor'], y=df_mom['This Month'],
+                marker_color=COLORS['danger'],
+                hovertemplate=f'This Month<br>%{{x}}<br>{CEDI}%{{y:,.0f}}<extra></extra>')
+    fig.update_layout(
+        barmode='group', plot_bgcolor=th['plot_bg'], paper_bgcolor=th['paper_bg'], height=CHART_H,
+        margin=dict(l=60, r=16, t=12, b=56),
+        legend=dict(font=dict(color=th['text'], size=10), bgcolor='rgba(0,0,0,0)',
+                    orientation='h', yanchor='bottom', y=1.02, xanchor='right', x=1),
+        hoverlabel=dict(bgcolor=th['card_bg'], font_color=th['text']),
+        xaxis=dict(showgrid=False, tickfont=dict(size=10, color=th['tick']),
+                   tickangle=-25, title=None, fixedrange=True),
+        yaxis=dict(showgrid=True, gridcolor=th['grid'], griddash=th['grid_dash'],
+                   zeroline=False, tickprefix=CEDI, tickfont=dict(size=10, color=th['tick']),
+                   fixedrange=True, title=None),
+    )
+    return fig
+
+def _exp_heatmap_chart(data, t='light'):
+    th = THEME[t]
+    if data.empty or data['date'].dropna().empty:
+        return empty_fig(t)
+    df = data.dropna(subset=['date', 'amount']).copy()
+    df['dow']  = df['date'].dt.dayofweek
+    df['week'] = df['date'].dt.isocalendar().week.astype(int)
+    pivot = df.groupby(['week', 'dow'])['amount'].sum().reset_index()
+    dow_names = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
+    weeks = sorted(pivot['week'].unique())
+    z = []
+    for dow_i in range(7):
+        row = []
+        for w in weeks:
+            val = pivot[(pivot['week'] == w) & (pivot['dow'] == dow_i)]['amount']
+            row.append(float(val.values[0]) if not val.empty else 0)
+        z.append(row)
+    fig = go.Figure(go.Heatmap(
+        z=z, x=[f'W{w}' for w in weeks], y=dow_names,
+        colorscale=[[0, th['plot_bg']], [0.001, 'rgba(239,68,68,0.15)'],
+                    [0.5, '#ef4444'], [1, '#7f1d1d']],
         hovertemplate='Week %{x} · %{y}<br>' + f'{CEDI}' + '%{z:,.0f}<extra></extra>',
         showscale=True,
         colorbar=dict(tickfont=dict(color=th['tick']), thickness=12, len=0.8),
