@@ -335,21 +335,13 @@ input#signup-email:focus, input#signup-password:focus {{
   font-size: 0.9em; font-weight: 600; transition: all 0.18s;
   color: rgba(255,255,255,0.75); background: transparent;
 }}
-.nav-tab.active {{
-  background: white; color: #667eea;
-}}
-
-/* Expense stats grid mirrors sales */
+.nav-tab.active {{ background: white; color: #667eea; }}
 #exp-stats-cards {{
   display: grid; grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 14px; margin-bottom: 18px;
 }}
 @media (max-width: 860px) {{ #exp-stats-cards {{ grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }} }}
-#exp-charts-row {{
-  display: grid; grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 16px; margin-bottom: 18px;
-}}
-#exp-charts-row-bottom {{
+#exp-charts-row, #exp-charts-row-bottom {{
   display: grid; grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 16px; margin-bottom: 18px;
 }}
@@ -366,8 +358,7 @@ input#signup-email:focus, input#signup-password:focus {{
 @media (max-width: 800px) {{ #exp-manual-form-grid {{ grid-template-columns: minmax(0,1fr) minmax(0,1fr); }} }}
 @media (max-width: 420px) {{ #exp-manual-form-grid {{ grid-template-columns: 1fr; }} }}
 #exp-filter-bar {{
-  background: var(--card-bg, white);
-  border: 1px solid var(--card-border, #e5e7eb);
+  background: var(--card-bg, white); border: 1px solid var(--card-border, #e5e7eb);
   border-radius: 14px; padding: 18px 20px;
   box-shadow: 0 2px 10px rgba(0,0,0,0.08); margin-bottom: 18px;
   display: flex; flex-wrap: wrap; gap: 16px; align-items: flex-end;
@@ -375,8 +366,7 @@ input#signup-email:focus, input#signup-password:focus {{
 #exp-filter-bar > div {{ flex: 1; min-width: 160px; }}
 @media (max-width: 600px) {{ #exp-filter-bar > div {{ min-width: 100%; }} }}
 #exp-budget-card {{
-  background: var(--card-bg, white);
-  border: 1px solid var(--card-border, #e5e7eb);
+  background: var(--card-bg, white); border: 1px solid var(--card-border, #e5e7eb);
   border-radius: 14px; padding: 20px 24px;
   box-shadow: 0 2px 10px rgba(0,0,0,0.08); margin-bottom: 18px;
 }}
@@ -513,10 +503,8 @@ def insert_expense_rows(user_id: str, df: pd.DataFrame):
     for _, row in df.iterrows():
         try:
             supabase.table("expense_records").insert({
-                "user_id":  user_id,
-                "date":     row["date"],
-                "vendor":   row["vendor"],
-                "amount":   row["amount"],
+                "user_id":  user_id, "date": row["date"],
+                "vendor":   row["vendor"], "amount": row["amount"],
                 "category": row.get("category", ""),
             }).execute()
         except Exception as e:
@@ -757,6 +745,172 @@ def signup_layout():
         ]),
     ])
 
+def expense_layout_content():
+    return html.Div(id='expense-wrapper', style={'display': 'none'}, children=[
+        html.Div(id='exp-main-container', style={'maxWidth': '1400px', 'margin': '0 auto', 'padding': '0 20px'}, children=[
+
+            html.Div(className='input-card', children=[
+                html.Div(className='tab-row', children=[
+                    html.Button('📤 Upload File', id='exp-tab-upload', n_clicks=1,
+                                style={**BTN_BASE, 'padding': '10px 20px',
+                                       'backgroundColor': COLORS['danger'], 'color': 'white'}),
+                    html.Button('✏️ Enter Manually', id='exp-tab-manual', n_clicks=0,
+                                style={**BTN_BASE, 'padding': '10px 20px',
+                                       'border': f'2px solid {COLORS["danger"]}',
+                                       'backgroundColor': 'white', 'color': COLORS['danger']}),
+                ]),
+                html.Div(id='exp-upload-section', children=[
+                    html.H3('📤 Upload Expense Data',
+                            style={'color': 'var(--text, #1f2937)', 'fontSize': '1.2em', 'margin': '0 0 14px'}),
+                    dcc.Upload(id='exp-upload-data', multiple=False,
+                               style={'height': '130px', 'borderWidth': '2px', 'borderStyle': 'dashed',
+                                      'borderRadius': '10px', 'borderColor': COLORS['danger'],
+                                      'cursor': 'pointer', 'display': 'flex', 'alignItems': 'center',
+                                      'justifyContent': 'center', 'textAlign': 'center'},
+                               children=html.Div([
+                                   html.Div('📁', style={'fontSize': '2.2em', 'marginBottom': '6px'}),
+                                   html.Div('Drag and Drop or Tap to Select',
+                                            style={'fontSize': '1em', 'fontWeight': '600'}),
+                                   html.Div('CSV or Excel — columns: date, vendor, amount, category (optional)',
+                                            style={'fontSize': '0.82em', 'color': '#6b7280', 'marginTop': '3px'}),
+                               ])),
+                ]),
+                html.Div(id='exp-manual-section', style={'display': 'none'}, children=[
+                    html.H3('✏️ Enter Expense',
+                            style={'color': 'var(--text, #1f2937)', 'fontSize': '1.2em', 'margin': '0 0 14px'}),
+                    html.Div(id='exp-manual-form-grid', children=[
+                        html.Div([html.Label('Date', style=LABEL_STYLE),
+                                  dcc.DatePickerSingle(id='exp-input-date',
+                                                       date=datetime.today().strftime('%Y-%m-%d'),
+                                                       display_format='YYYY-MM-DD', style={'width': '100%'})]),
+                        html.Div([html.Label('Vendor / Description', style=LABEL_STYLE),
+                                  dcc.Input(id='exp-input-vendor', type='text',
+                                            placeholder='e.g. Electricity bill', style=INPUT_STYLE)]),
+                        html.Div([html.Label(f'Amount ({CEDI})', style=LABEL_STYLE),
+                                  dcc.Input(id='exp-input-amount', type='number', min=0,
+                                            placeholder='0.00', style=INPUT_STYLE)]),
+                        html.Div([html.Label('Category (optional)', style=LABEL_STYLE),
+                                  dcc.Input(id='exp-input-category', type='text',
+                                            placeholder='e.g. Utilities', style=INPUT_STYLE)]),
+                        html.Div([html.Label(' ', style={**LABEL_STYLE, 'visibility': 'hidden'}),
+                                  html.Button('➕ Add', id='exp-add-btn', n_clicks=0,
+                                              style={**BTN_BASE, 'width': '100%', 'padding': '10px 18px',
+                                                     'backgroundColor': COLORS['danger'], 'color': 'white'})]),
+                    ]),
+                    html.Button('🗑️ Clear All Expenses', id='exp-clear-btn', n_clicks=0,
+                                style={**BTN_BASE, 'padding': '9px 18px', 'marginTop': '10px',
+                                       'backgroundColor': '#6b7280', 'color': 'white'}),
+                ]),
+                html.Div(id='exp-status-message',
+                         style={'marginTop': '12px', 'padding': '10px 14px', 'borderRadius': '8px',
+                                'textAlign': 'center', 'fontSize': '0.9em', 'display': 'none'}),
+            ]),
+
+            html.Div(id='exp-filter-bar', children=[
+                html.Div([html.Label('📅 Date Range', style={**LABEL_STYLE, 'marginBottom': '6px'}),
+                          dcc.DatePickerRange(id='exp-filter-date-range', display_format='YYYY-MM-DD',
+                                             style={'width': '100%'})]),
+                html.Div([html.Label('🏷️ Vendor(s)', style={**LABEL_STYLE, 'marginBottom': '6px'}),
+                          dcc.Dropdown(id='exp-filter-vendors', multi=True,
+                                       placeholder='All vendors…', style={'fontSize': '0.93em'})]),
+                html.Div([html.Label('📂 Category', style={**LABEL_STYLE, 'marginBottom': '6px'}),
+                          dcc.Dropdown(id='exp-filter-categories', multi=True,
+                                       placeholder='All categories…', style={'fontSize': '0.93em'})]),
+                html.Div([html.Label(' ', style={**LABEL_STYLE, 'marginBottom': '6px', 'visibility': 'hidden'}),
+                          html.Button('↺ Reset Filters', id='exp-reset-filters-btn', n_clicks=0,
+                                      style={**BTN_BASE, 'width': '100%', 'padding': '10px 16px',
+                                             'backgroundColor': '#e5e7eb', 'color': '#374151'})],
+                         style={'maxWidth': '140px'}),
+            ]),
+
+            html.Div(id='exp-budget-card', children=[
+                html.Div(style={'display': 'flex', 'justifyContent': 'space-between',
+                                'alignItems': 'center', 'flexWrap': 'wrap', 'gap': '12px'}, children=[
+                    html.Div([
+                        html.H3('🎯 Monthly Expense Budget',
+                                style={'margin': '0 0 4px', 'fontSize': '1.05em', 'color': 'var(--text, #1f2937)'}),
+                        html.Div(id='exp-budget-progress-text',
+                                 style={'fontSize': '0.85em', 'color': 'var(--sub-text, #6b7280)'}),
+                    ]),
+                    html.Div(style={'display': 'flex', 'gap': '10px', 'alignItems': 'center'}, children=[
+                        html.Label(f'Budget ({CEDI})',
+                                   style={**LABEL_STYLE, 'margin': '0', 'whiteSpace': 'nowrap'}),
+                        dcc.Input(id='exp-budget-input', type='number', min=0, placeholder='e.g. 20000',
+                                  style={**INPUT_STYLE, 'width': '160px', 'margin': '0'}),
+                    ]),
+                ]),
+                html.Div(className='progress-outer', children=[
+                    html.Div(id='exp-budget-progress-bar', className='progress-inner',
+                             style={'width': '0%', 'backgroundColor': COLORS['danger']}),
+                ]),
+            ]),
+
+            html.Div(id='exp-stats-cards'),
+
+            html.Div(id='exp-charts-row', children=[
+                html.Div(className='chart-card', children=[
+                    html.H3('📉 Expense Trend',
+                            style={'color': 'var(--text, #1f2937)', 'margin': '0 0 2px', 'fontSize': '1.1em'}),
+                    html.P('Daily totals — all vendors',
+                           style={'color': '#9ca3af', 'fontSize': '0.78em', 'margin': '0 0 12px'}),
+                    html.Div(className='graph-wrap', children=[
+                        dcc.Graph(id='exp-line-chart', style={'height': '100%'},
+                                  config={'displayModeBar': False, 'responsive': True}),
+                    ]),
+                ]),
+                html.Div(className='chart-card', children=[
+                    html.H3('🏆 Top Vendors',
+                            style={'color': 'var(--text, #1f2937)', 'margin': '0 0 2px', 'fontSize': '1.1em'}),
+                    html.P(f'Total {CEDI} by vendor (top 10)',
+                           style={'color': '#9ca3af', 'fontSize': '0.78em', 'margin': '0 0 12px'}),
+                    html.Div(className='graph-wrap', children=[
+                        dcc.Graph(id='exp-bar-chart', style={'height': '100%'},
+                                  config={'displayModeBar': False, 'responsive': True}),
+                    ]),
+                ]),
+            ]),
+
+            html.Div(id='exp-charts-row-bottom', children=[
+                html.Div(className='chart-card', children=[
+                    html.H3('🥧 Expense Share',
+                            style={'color': 'var(--text, #1f2937)', 'margin': '0 0 2px', 'fontSize': '1.1em'}),
+                    html.P('Vendor share of total expenses',
+                           style={'color': '#9ca3af', 'fontSize': '0.78em', 'margin': '0 0 12px'}),
+                    html.Div(className='graph-wrap', children=[
+                        dcc.Graph(id='exp-donut-chart', style={'height': '100%'},
+                                  config={'displayModeBar': False, 'responsive': True}),
+                    ]),
+                ]),
+                html.Div(className='chart-card', children=[
+                    html.H3('📊 Month-over-Month',
+                            style={'color': 'var(--text, #1f2937)', 'margin': '0 0 2px', 'fontSize': '1.1em'}),
+                    html.P('Current vs previous month per vendor (top 8)',
+                           style={'color': '#9ca3af', 'fontSize': '0.78em', 'margin': '0 0 12px'}),
+                    html.Div(className='graph-wrap', children=[
+                        dcc.Graph(id='exp-mom-chart', style={'height': '100%'},
+                                  config={'displayModeBar': False, 'responsive': True}),
+                    ]),
+                ]),
+            ]),
+
+            html.Div(style={'marginBottom': '18px'}, children=[
+                html.Div(className='chart-card', children=[
+                    html.H3('🌡️ Expense Heatmap',
+                            style={'color': 'var(--text, #1f2937)', 'margin': '0 0 2px', 'fontSize': '1.1em'}),
+                    html.P('Expenses by day-of-week and week number',
+                           style={'color': '#9ca3af', 'fontSize': '0.78em', 'margin': '0 0 12px'}),
+                    html.Div(className='graph-wrap', children=[
+                        dcc.Graph(id='exp-heatmap-chart', style={'height': '100%'},
+                                  config={'displayModeBar': False, 'responsive': True}),
+                    ]),
+                ]),
+            ]),
+
+            html.Div(id='exp-table-container', style={'marginBottom': '24px'}),
+        ]),
+    ])
+
+
 def dashboard_layout():
     return html.Div(
         style={'minHeight': '100vh', 'margin': '0',
@@ -809,14 +963,14 @@ def dashboard_layout():
                 html.Div(style={'marginTop': '8px'}, children=[
                     html.Span(id='user-greeting',
                               style={'fontSize': '0.95em', 'opacity': '0.95', 'fontWeight': '500'}),
-                    html.P(f'Track sales & expenses in Ghana Cedis ({CEDI}) \u2014 data saved to Supabase',
+                    html.P(f'Track sales & expenses in Ghana Cedis ({CEDI}) — data saved to Supabase',
                            className='hdr-sub',
                            style={'margin': '3px 0 0', 'fontSize': '0.85em', 'opacity': '0.75'}),
                 ]),
                 html.Div(id='top-nav', children=[
-                    html.Button('\U0001f4ca Sales', id='nav-sales-btn', n_clicks=1,
+                    html.Button('📊 Sales', id='nav-sales-btn', n_clicks=1,
                                 className='nav-tab active'),
-                    html.Button('\U0001f4b8 Expenses', id='nav-expenses-btn', n_clicks=0,
+                    html.Button('💸 Expenses', id='nav-expenses-btn', n_clicks=0,
                                 className='nav-tab'),
                 ]),
             ]),
@@ -1055,202 +1209,6 @@ def dashboard_layout():
             expense_layout_content(),
         ],
     )
-
-
-def expense_layout_content():
-    return html.Div(id='expense-wrapper', children=[
-        html.Div(id='exp-main-container', style={'maxWidth': '1400px', 'margin': '0 auto', 'padding': '0 20px'}, children=[
-
-            # Data entry card
-            html.Div(className='input-card', children=[
-                html.Div(className='tab-row', children=[
-                    html.Button('\U0001f4e4 Upload File', id='exp-tab-upload', n_clicks=1,
-                                style={**BTN_BASE, 'padding': '10px 20px',
-                                       'backgroundColor': COLORS['danger'], 'color': 'white'}),
-                    html.Button('\u270f\ufe0f Enter Manually', id='exp-tab-manual', n_clicks=0,
-                                style={**BTN_BASE, 'padding': '10px 20px',
-                                       'border': f'2px solid {COLORS["danger"]}',
-                                       'backgroundColor': 'white', 'color': COLORS['danger']}),
-                ]),
-                html.Div(id='exp-upload-section', children=[
-                    html.H3('\U0001f4e4 Upload Expense Data',
-                            style={'color': 'var(--text, #1f2937)', 'fontSize': '1.2em', 'margin': '0 0 14px'}),
-                    dcc.Upload(id='exp-upload-data', multiple=False,
-                               style={
-                                   'height': '130px', 'borderWidth': '2px', 'borderStyle': 'dashed',
-                                   'borderRadius': '10px', 'borderColor': COLORS['danger'],
-                                   'cursor': 'pointer',
-                                   'display': 'flex', 'alignItems': 'center', 'justifyContent': 'center',
-                                   'textAlign': 'center',
-                               },
-                               children=html.Div([
-                                   html.Div('\U0001f4c1', style={'fontSize': '2.2em', 'marginBottom': '6px'}),
-                                   html.Div('Drag and Drop or Tap to Select',
-                                            style={'fontSize': '1em', 'fontWeight': '600'}),
-                                   html.Div('CSV or Excel (.xlsx) \u2014 columns: date, vendor, amount, category (optional)',
-                                            style={'fontSize': '0.82em', 'color': '#6b7280', 'marginTop': '3px'}),
-                               ])),
-                ]),
-                html.Div(id='exp-manual-section', style={'display': 'none'}, children=[
-                    html.H3('\u270f\ufe0f Enter Expense',
-                            style={'color': 'var(--text, #1f2937)', 'fontSize': '1.2em', 'margin': '0 0 14px'}),
-                    html.Div(id='exp-manual-form-grid', children=[
-                        html.Div([
-                            html.Label('Date', style=LABEL_STYLE),
-                            dcc.DatePickerSingle(id='exp-input-date',
-                                                 date=datetime.today().strftime('%Y-%m-%d'),
-                                                 display_format='YYYY-MM-DD',
-                                                 style={'width': '100%'}),
-                        ]),
-                        html.Div([
-                            html.Label('Vendor / Description', style=LABEL_STYLE),
-                            dcc.Input(id='exp-input-vendor', type='text',
-                                      placeholder='e.g. Electricity bill', style=INPUT_STYLE),
-                        ]),
-                        html.Div([
-                            html.Label(f'Amount ({CEDI})', style=LABEL_STYLE),
-                            dcc.Input(id='exp-input-amount', type='number', min=0,
-                                      placeholder='0.00', style=INPUT_STYLE),
-                        ]),
-                        html.Div([
-                            html.Label('Category (optional)', style=LABEL_STYLE),
-                            dcc.Input(id='exp-input-category', type='text',
-                                      placeholder='e.g. Utilities', style=INPUT_STYLE),
-                        ]),
-                        html.Div([
-                            html.Label('\u00a0', style={**LABEL_STYLE, 'visibility': 'hidden'}),
-                            html.Button('\u2795 Add', id='exp-add-btn', n_clicks=0,
-                                        style={**BTN_BASE, 'width': '100%', 'padding': '10px 18px',
-                                               'backgroundColor': COLORS['danger'], 'color': 'white'}),
-                        ]),
-                    ]),
-                    html.Button('\U0001f5d1\ufe0f Clear All Expenses', id='exp-clear-btn', n_clicks=0,
-                                style={**BTN_BASE, 'padding': '9px 18px', 'marginTop': '10px',
-                                       'backgroundColor': '#6b7280', 'color': 'white'}),
-                ]),
-                html.Div(id='exp-status-message',
-                         style={'marginTop': '12px', 'padding': '10px 14px', 'borderRadius': '8px',
-                                'textAlign': 'center', 'fontSize': '0.9em', 'display': 'none'}),
-            ]),
-
-            # Filter bar
-            html.Div(id='exp-filter-bar', children=[
-                html.Div([
-                    html.Label('\U0001f4c5 Date Range', style={**LABEL_STYLE, 'marginBottom': '6px'}),
-                    dcc.DatePickerRange(id='exp-filter-date-range', display_format='YYYY-MM-DD',
-                                       style={'width': '100%'}),
-                ]),
-                html.Div([
-                    html.Label('\U0001f3f7\ufe0f Vendor(s)', style={**LABEL_STYLE, 'marginBottom': '6px'}),
-                    dcc.Dropdown(id='exp-filter-vendors', multi=True,
-                                 placeholder='All vendors\u2026', style={'fontSize': '0.93em'}),
-                ]),
-                html.Div([
-                    html.Label('\U0001f4c2 Category', style={**LABEL_STYLE, 'marginBottom': '6px'}),
-                    dcc.Dropdown(id='exp-filter-categories', multi=True,
-                                 placeholder='All categories\u2026', style={'fontSize': '0.93em'}),
-                ]),
-                html.Div([
-                    html.Label('\u00a0', style={**LABEL_STYLE, 'marginBottom': '6px', 'visibility': 'hidden'}),
-                    html.Button('\u21ba Reset Filters', id='exp-reset-filters-btn', n_clicks=0,
-                                style={**BTN_BASE, 'width': '100%', 'padding': '10px 16px',
-                                       'backgroundColor': '#e5e7eb', 'color': '#374151'}),
-                ], style={'maxWidth': '140px'}),
-            ]),
-
-            # Budget card
-            html.Div(id='exp-budget-card', children=[
-                html.Div(style={'display': 'flex', 'justifyContent': 'space-between',
-                                'alignItems': 'center', 'flexWrap': 'wrap', 'gap': '12px'}, children=[
-                    html.Div([
-                        html.H3('\U0001f3af Monthly Expense Budget', style={
-                            'margin': '0 0 4px', 'fontSize': '1.05em',
-                            'color': 'var(--text, #1f2937)'}),
-                        html.Div(id='exp-budget-progress-text',
-                                 style={'fontSize': '0.85em', 'color': 'var(--sub-text, #6b7280)'}),
-                    ]),
-                    html.Div(style={'display': 'flex', 'gap': '10px', 'alignItems': 'center'}, children=[
-                        html.Label(f'Budget ({CEDI})', style={**LABEL_STYLE, 'margin': '0', 'whiteSpace': 'nowrap'}),
-                        dcc.Input(id='exp-budget-input', type='number', min=0,
-                                  placeholder='e.g. 20000',
-                                  style={**INPUT_STYLE, 'width': '160px', 'margin': '0'}),
-                    ]),
-                ]),
-                html.Div(className='progress-outer', children=[
-                    html.Div(id='exp-budget-progress-bar', className='progress-inner',
-                             style={'width': '0%', 'backgroundColor': COLORS['danger']}),
-                ]),
-            ]),
-
-            # Stat cards
-            html.Div(id='exp-stats-cards'),
-
-            # Charts top row
-            html.Div(id='exp-charts-row', children=[
-                html.Div(className='chart-card', children=[
-                    html.H3('\U0001f4c9 Expense Trend',
-                            style={'color': 'var(--text, #1f2937)', 'margin': '0 0 2px', 'fontSize': '1.1em'}),
-                    html.P('Daily totals \u2014 all vendors',
-                           style={'color': '#9ca3af', 'fontSize': '0.78em', 'margin': '0 0 12px'}),
-                    html.Div(className='graph-wrap', children=[
-                        dcc.Graph(id='exp-line-chart', style={'height': '100%'},
-                                  config={'displayModeBar': False, 'responsive': True}),
-                    ]),
-                ]),
-                html.Div(className='chart-card', children=[
-                    html.H3('\U0001f3c6 Top Vendors',
-                            style={'color': 'var(--text, #1f2937)', 'margin': '0 0 2px', 'fontSize': '1.1em'}),
-                    html.P(f'Total {CEDI} by vendor (top 10)',
-                           style={'color': '#9ca3af', 'fontSize': '0.78em', 'margin': '0 0 12px'}),
-                    html.Div(className='graph-wrap', children=[
-                        dcc.Graph(id='exp-bar-chart', style={'height': '100%'},
-                                  config={'displayModeBar': False, 'responsive': True}),
-                    ]),
-                ]),
-            ]),
-
-            # Charts bottom row
-            html.Div(id='exp-charts-row-bottom', children=[
-                html.Div(className='chart-card', children=[
-                    html.H3('\U0001f967 Expense Share',
-                            style={'color': 'var(--text, #1f2937)', 'margin': '0 0 2px', 'fontSize': '1.1em'}),
-                    html.P('Vendor share of total expenses',
-                           style={'color': '#9ca3af', 'fontSize': '0.78em', 'margin': '0 0 12px'}),
-                    html.Div(className='graph-wrap', children=[
-                        dcc.Graph(id='exp-donut-chart', style={'height': '100%'},
-                                  config={'displayModeBar': False, 'responsive': True}),
-                    ]),
-                ]),
-                html.Div(className='chart-card', children=[
-                    html.H3('\U0001f4ca Month-over-Month',
-                            style={'color': 'var(--text, #1f2937)', 'margin': '0 0 2px', 'fontSize': '1.1em'}),
-                    html.P('Current vs previous month per vendor (top 8)',
-                           style={'color': '#9ca3af', 'fontSize': '0.78em', 'margin': '0 0 12px'}),
-                    html.Div(className='graph-wrap', children=[
-                        dcc.Graph(id='exp-mom-chart', style={'height': '100%'},
-                                  config={'displayModeBar': False, 'responsive': True}),
-                    ]),
-                ]),
-            ]),
-
-            # Heatmap
-            html.Div(style={'marginBottom': '18px'}, children=[
-                html.Div(className='chart-card', children=[
-                    html.H3('\U0001f321\ufe0f Expense Heatmap',
-                            style={'color': 'var(--text, #1f2937)', 'margin': '0 0 2px', 'fontSize': '1.1em'}),
-                    html.P('Expenses by day-of-week and week number',
-                           style={'color': '#9ca3af', 'fontSize': '0.78em', 'margin': '0 0 12px'}),
-                    html.Div(className='graph-wrap', children=[
-                        dcc.Graph(id='exp-heatmap-chart', style={'height': '100%'},
-                                  config={'displayModeBar': False, 'responsive': True}),
-                    ]),
-                ]),
-            ]),
-
-            # Table
-            html.Div(id='exp-table-container', style={'marginBottom': '24px'}),
-        ]),
-    ])
 
 # ── Root layout ────────────────────────────────────────────────────────────────
 app.layout = html.Div(id='app-root', children=[
