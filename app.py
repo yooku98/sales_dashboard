@@ -335,8 +335,8 @@ input#signup-email:focus, input#signup-password:focus {{
   border-radius: 8px 8px 0 0;
 }}
 .main-tabs .tab-btn.active {{ background: white; color: #667eea; }}
-.tab-panel {{ display: none; }}
-.tab-panel.active {{ display: block; }}
+.tab-panel {{ visibility: hidden; height: 0; overflow: hidden; }}
+.tab-panel.active {{ visibility: visible; height: auto; overflow: visible; }}
 /* Expense grids */
 #exp-stats-cards {{
   display: grid; grid-template-columns: repeat(4, minmax(0,1fr));
@@ -1114,7 +1114,7 @@ def dashboard_layout():
                                    style={'color': '#9ca3af', 'fontSize': '0.78em', 'margin': '0 0 12px'}),
                             html.Div(className='graph-wrap', children=[
                                 dcc.Graph(id='exp-line-chart', style={'height': '100%'},
-                                          config={'displayModeBar': False, 'responsive': True}),
+                                          config={'displayModeBar': False, 'responsive': True, 'autosizable': True}),
                             ]),
                         ]),
                         html.Div(className='chart-card', children=[
@@ -2047,9 +2047,10 @@ def populate_expense_filters(session, _reset, _refresh):
     Input('exp-filter-categories',     'value'),
     Input('exp-budget-input',          'value'),
     Input('exp-refresh',               'data'),
+    Input('btn-expenses',              'n_clicks'),
 )
 def update_expense_dashboard(session, theme, start_date, end_date,
-                              sel_vendors, sel_categories, budget_val, _refresh):
+                              sel_vendors, sel_categories, budget_val, _refresh, _tab):
     t  = theme or 'dark'
     th = THEME[t]
     user_id = (session or {}).get('user_id')
