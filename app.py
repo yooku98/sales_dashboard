@@ -1,6 +1,8 @@
 import base64
 import io
 import os
+import json
+import anthropic
 import pandas as pd
 from dash import Dash, dcc, html, Input, Output, State, dash_table, ctx, no_update
 from dash.exceptions import PreventUpdate
@@ -15,6 +17,9 @@ SUPABASE_KEY = os.environ.get("SUPABASE_KEY", "")
 supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
 
 # ── App ────────────────────────────────────────────────────────────────────────
+# ── Anthropic ─────────────────────────────────────────────────────────────────
+anthropic_client = anthropic.Anthropic(api_key=os.environ.get("ANTHROPIC_API_KEY", ""))
+
 CEDI = '\u20b5'
 SITE_URL = os.environ.get("SITE_URL", "sales-dashboard.app")
 
@@ -367,6 +372,31 @@ input#signup-email:focus, input#signup-password:focus {{
 }}
 #exp-filter-bar > div {{ flex: 1; min-width: 160px; }}
 @media (max-width: 600px) {{ #exp-filter-bar > div {{ min-width: 100%; }} }}
+/* ── AI Insights tab ── */
+#ai-insights-panel {{
+  max-width: 1400px; margin: 0 auto; padding: 20px 20px 40px;
+}}
+.ai-card {{
+  background: var(--card-bg, white);
+  border: 1px solid var(--card-border, #e5e7eb);
+  border-radius: 14px; padding: 24px 28px;
+  box-shadow: 0 2px 10px rgba(0,0,0,0.10);
+  margin-bottom: 18px;
+}}
+.ai-insights-text {{
+  font-size: 0.97em; line-height: 1.8;
+  color: var(--text, #1f2937);
+  white-space: pre-wrap; word-break: break-word;
+}}
+.ai-section-header {{
+  font-size: 1.15em; font-weight: 700;
+  color: var(--text, #1f2937); margin: 0 0 10px;
+}}
+.ai-badge {{
+  display: inline-block; padding: 3px 12px; border-radius: 20px;
+  font-size: 0.78em; font-weight: 700; margin-right: 6px;
+  vertical-align: middle;
+}}
 #exp-budget-card {{
   background: var(--card-bg,white); border: 1px solid var(--card-border,#e5e7eb);
   border-radius: 14px; padding: 20px 24px;
@@ -793,6 +823,8 @@ def dashboard_layout():
                                 className='tab-btn active'),
                     html.Button('\U0001f4b8 Expenses', id='btn-expenses', n_clicks=0,
                                 className='tab-btn'),
+                    html.Button('\U0001f916 AI Insights', id='btn-ai', n_clicks=0,
+                                className='tab-btn'),
                 ]),
             ]),
             html.Div(id='signout-toast', style={'display': 'none'}),
@@ -1169,6 +1201,105 @@ def dashboard_layout():
 
                 ]),
                 ]),  # end panel-expenses
+
+                # ════════════════════════════════════════════════════════
+                # AI INSIGHTS TAB
+                # ════════════════════════════════════════════════════════
+                html.Div(id='panel-ai', className='tab-panel', children=[
+                html.Div(id='ai-insights-panel', children=[
+
+                    # Header card
+                    html.Div(className='ai-card', style={'borderTop': '4px solid #667eea'}, children=[
+                        html.Div(style={'display':'flex','justifyContent':'space-between',
+                                        'alignItems':'center','flexWrap':'wrap','gap':'12px'}, children=[
+                            html.Div([
+                                html.H2('\U0001f916 AI Business Insights',
+                                        style={'margin':'0 0 4px','fontSize':'1.25em',
+                                               'color':'var(--text,#1f2937)'}),
+                                html.P('Claude analyses your sales and expense data and generates actionable insights.',
+                                       style={'margin':'0','fontSize':'0.85em',
+                                              'color':'var(--sub-text,#6b7280)'}),
+                            ]),
+                            html.Button('\u27f3 Generate Insights', id='ai-generate-btn', n_clicks=0,
+                                        style={**BTN_BASE, 'padding':'10px 22px',
+                                               'backgroundColor':'#667eea','color':'white',
+                                               'fontSize':'0.9em'}),
+                        ]),
+                        html.Div(id='ai-error-msg', style={'display':'none'}),
+                    ]),
+
+                    # Loading indicator
+                    html.Div(id='ai-loading', style={'display':'none','textAlign':'center',
+                                                      'padding':'40px 20px'}, children=[
+                        html.Div('\U0001f4ad Analysing your data\u2026',
+                                 style={'fontSize':'1.1em','color':'var(--sub-text,#6b7280)',
+                                        'marginBottom':'12px','fontWeight':'600'}),
+                        html.Div(style={'display':'flex','justifyContent':'center','gap':'6px'}, children=[
+                            html.Div(style={'width':'10px','height':'10px','borderRadius':'50%',
+                                           'backgroundColor':'#667eea',
+                                           'animation':'pulse 1.2s ease-in-out infinite'}),
+                            html.Div(style={'width':'10px','height':'10px','borderRadius':'50%',
+                                           'backgroundColor':'#764ba2',
+                                           'animation':'pulse 1.2s ease-in-out 0.4s infinite'}),
+                            html.Div(style={'width':'10px','height':'10px','borderRadius':'50%',
+                                           'backgroundColor':'#667eea',
+                                           'animation':'pulse 1.2s ease-in-out 0.8s infinite'}),
+                        ]),
+                    ]),
+
+                    # Results area
+                    html.Div(id='ai-results', style={'display':'none'}, children=[
+
+                        # Summary card
+                        html.Div(className='ai-card', children=[
+                            html.H3('\U0001f4ca Executive Summary', className='ai-section-header'),
+                            html.Div(id='ai-summary', className='ai-insights-text'),
+                        ]),
+
+                        # Two-col: strengths + risks
+                        html.Div(style={'display':'grid',
+                                        'gridTemplateColumns':'repeat(auto-fit,minmax(300px,1fr))',
+                                        'gap':'16px','marginBottom':'18px'}, children=[
+                            html.Div(className='ai-card',
+                                     style={'borderLeft':'4px solid #10b981'}, children=[
+                                html.H3('\u2705 Strengths & Opportunities', className='ai-section-header'),
+                                html.Div(id='ai-strengths', className='ai-insights-text'),
+                            ]),
+                            html.Div(className='ai-card',
+                                     style={'borderLeft':'4px solid #ef4444'}, children=[
+                                html.H3('\u26a0\ufe0f Risks & Watch Points', className='ai-section-header'),
+                                html.Div(id='ai-risks', className='ai-insights-text'),
+                            ]),
+                        ]),
+
+                        # Recommendations card
+                        html.Div(className='ai-card',
+                                 style={'borderLeft':'4px solid #f59e0b'}, children=[
+                            html.H3('\U0001f3af Actionable Recommendations', className='ai-section-header'),
+                            html.Div(id='ai-recommendations', className='ai-insights-text'),
+                        ]),
+
+                        # Forecast card
+                        html.Div(className='ai-card',
+                                 style={'borderLeft':'4px solid #764ba2'}, children=[
+                            html.H3('\U0001f52e Outlook & Forecast', className='ai-section-header'),
+                            html.Div(id='ai-forecast', className='ai-insights-text'),
+                        ]),
+
+                        html.P(id='ai-generated-at',
+                               style={'textAlign':'right','fontSize':'0.75em',
+                                      'color':'var(--sub-text,#9ca3af)','marginTop':'8px'}),
+                    ]),
+
+                    # Empty state
+                    html.Div(id='ai-empty', style={'textAlign':'center','padding':'60px 20px'}, children=[
+                        html.Div('\U0001f4ca', style={'fontSize':'3em','marginBottom':'12px'}),
+                        html.P('Upload or enter your sales data, then click Generate Insights.',
+                               style={'color':'var(--sub-text,#6b7280)','fontSize':'1em'}),
+                    ]),
+
+                ]),
+                ]),  # end panel-ai
 
             ]),  # end dashboard-wrapper
         ],
@@ -1883,20 +2014,7 @@ def _heatmap_chart(data, t='light'):
     return fig
 
 
-# ── Clientside tab switching ───────────────────────────────────────────────────
-@app.callback(
-    Output('panel-sales',    'className'),
-    Output('panel-expenses', 'className'),
-    Output('btn-sales',      'className'),
-    Output('btn-expenses',   'className'),
-    Input('btn-sales',       'n_clicks'),
-    Input('btn-expenses',    'n_clicks'),
-    prevent_initial_call=True,
-)
-def switch_main_tab(_s, _e):
-    if ctx.triggered_id == 'btn-expenses':
-        return 'tab-panel', 'tab-panel active', 'tab-btn', 'tab-btn active'
-    return 'tab-panel active', 'tab-panel', 'tab-btn active', 'tab-btn'
+# ── Main tab switcher moved to bottom (3-tab version) ──────────────────────────
 
 # ── Expense upload/manual tab switcher ────────────────────────────────────────
 @app.callback(
@@ -2304,6 +2422,195 @@ def update_expense_dashboard(session, theme, start_date, end_date,
         ])
 
     return line_fig, bar_fig, donut_fig, mom_fig, heat_fig, stats, tbl, prog_style, prog_text
+
+
+# ── Main tab switcher (updated for 3 tabs) ────────────────────────────────────
+@app.callback(
+    Output('panel-sales',    'className', allow_duplicate=True),
+    Output('panel-expenses', 'className', allow_duplicate=True),
+    Output('panel-ai',       'className'),
+    Output('btn-sales',      'className', allow_duplicate=True),
+    Output('btn-expenses',   'className', allow_duplicate=True),
+    Output('btn-ai',         'className'),
+    Input('btn-sales',       'n_clicks'),
+    Input('btn-expenses',    'n_clicks'),
+    Input('btn-ai',          'n_clicks'),
+    prevent_initial_call=True,
+)
+def switch_all_tabs(_s, _e, _a):
+    tid = ctx.triggered_id
+    if tid == 'btn-expenses':
+        return ('tab-panel', 'tab-panel active', 'tab-panel',
+                'tab-btn', 'tab-btn active', 'tab-btn')
+    if tid == 'btn-ai':
+        return ('tab-panel', 'tab-panel', 'tab-panel active',
+                'tab-btn', 'tab-btn', 'tab-btn active')
+    return ('tab-panel active', 'tab-panel', 'tab-panel',
+            'tab-btn active', 'tab-btn', 'tab-btn')
+
+
+# ── AI Insights generator ─────────────────────────────────────────────────────
+def _build_data_summary(user_id):
+    """Build a compact data summary string to send to Claude."""
+    sales_records   = load_user_data(user_id)
+    expense_records = load_expense_data(user_id)
+    sales_df   = records_to_df(sales_records)
+    expense_df = expense_records_to_df(expense_records)
+
+    summary = {}
+
+    if not sales_df.empty:
+        s = sales_df.copy()
+        s['month'] = s['date'].dt.to_period('M').astype(str)
+        monthly = s.groupby('month')['sales'].sum().tail(6).to_dict()
+        top_products = (s.groupby('product')['sales'].sum()
+                         .sort_values(ascending=False).head(5).to_dict())
+        by_category = (s.groupby('category')['sales'].sum()
+                        .sort_values(ascending=False).to_dict()) if s['category'].any() else {}
+        summary['sales'] = {
+            'total':        round(float(s['sales'].sum()), 2),
+            'average':      round(float(s['sales'].mean()), 2),
+            'records':      len(s),
+            'date_range':   f"{s['date'].min().date()} to {s['date'].max().date()}",
+            'monthly':      {k: round(v, 2) for k, v in monthly.items()},
+            'top_products': {k: round(v, 2) for k, v in top_products.items()},
+            'by_category':  {k: round(v, 2) for k, v in by_category.items()},
+        }
+
+    if not expense_df.empty:
+        e = expense_df.copy()
+        e['month'] = e['date'].dt.to_period('M').astype(str)
+        monthly_exp = e.groupby('month')['amount'].sum().tail(6).to_dict()
+        top_vendors = (e.groupby('vendor')['amount'].sum()
+                        .sort_values(ascending=False).head(5).to_dict())
+        by_cat_exp  = (e.groupby('category')['amount'].sum()
+                        .sort_values(ascending=False).to_dict()) if e['category'].any() else {}
+        summary['expenses'] = {
+            'total':       round(float(e['amount'].sum()), 2),
+            'average':     round(float(e['amount'].mean()), 2),
+            'records':     len(e),
+            'date_range':  f"{e['date'].min().date()} to {e['date'].max().date()}",
+            'monthly':     {k: round(v, 2) for k, v in monthly_exp.items()},
+            'top_vendors': {k: round(v, 2) for k, v in top_vendors.items()},
+            'by_category': {k: round(v, 2) for k, v in by_cat_exp.items()},
+        }
+
+    if 'sales' in summary and 'expenses' in summary:
+        total_s = summary['sales']['total']
+        total_e = summary['expenses']['total']
+        summary['profit'] = {
+            'gross_profit':  round(total_s - total_e, 2),
+            'profit_margin': round((total_s - total_e) / total_s * 100, 1) if total_s else 0,
+        }
+
+    return summary
+
+
+@app.callback(
+    Output('ai-summary',         'children'),
+    Output('ai-strengths',       'children'),
+    Output('ai-risks',           'children'),
+    Output('ai-recommendations', 'children'),
+    Output('ai-forecast',        'children'),
+    Output('ai-generated-at',    'children'),
+    Output('ai-results',         'style'),
+    Output('ai-loading',         'style'),
+    Output('ai-empty',           'style'),
+    Output('ai-error-msg',       'children'),
+    Output('ai-error-msg',       'style'),
+    Input('ai-generate-btn',     'n_clicks'),
+    State('session-store',       'data'),
+    prevent_initial_call=True,
+)
+def generate_ai_insights(n_clicks, session):
+    if not n_clicks:
+        raise PreventUpdate
+
+    user_id = (session or {}).get('user_id')
+    if not user_id:
+        raise PreventUpdate
+
+    hidden   = {'display': 'none'}
+    err_show = {'display': 'block', 'marginTop': '12px', 'padding': '10px 14px',
+                'borderRadius': '8px', 'backgroundColor': '#fee2e2',
+                'color': '#991b1b', 'fontSize': '0.9em',
+                'border': '1px solid #ef4444'}
+
+    try:
+        data_summary = _build_data_summary(user_id)
+    except Exception as e:
+        print(f"[ai] data build error: {e}")
+        return ('', '', '', '', '', '',
+                hidden, hidden, {'display':'block'},
+                f'Could not load your data: {e}', err_show)
+
+    if not data_summary:
+        return ('', '', '', '', '', '',
+                hidden, hidden, {'display':'block'},
+                'No data found. Upload or enter sales records first.', err_show)
+
+    prompt = f"""You are a business analyst. Analyse this Ghana-based business data (all amounts in Ghana Cedis GHS) and provide concise, practical insights.
+
+DATA SUMMARY:
+{json.dumps(data_summary, indent=2)}
+
+Respond ONLY with a valid JSON object — no markdown, no code blocks, no extra text — with exactly these keys:
+{{
+  "summary": "2-3 sentence executive summary of overall business health",
+  "strengths": "3-4 bullet points of what is working well (use • as bullet)",
+  "risks": "3-4 bullet points of concerns or risks (use • as bullet)",
+  "recommendations": "4-5 specific, actionable recommendations numbered 1. 2. 3. etc",
+  "forecast": "2-3 sentence outlook based on trends"
+}}"""
+
+    try:
+        api_key = os.environ.get("ANTHROPIC_API_KEY", "")
+        if not api_key:
+            raise ValueError("ANTHROPIC_API_KEY environment variable not set.")
+
+        client   = anthropic.Anthropic(api_key=api_key)
+        message  = client.messages.create(
+            model="claude-sonnet-4-20250514",
+            max_tokens=1024,
+            messages=[{"role": "user", "content": prompt}]
+        )
+        raw = message.content[0].text.strip()
+
+        # Strip markdown code fences if present
+        if raw.startswith("```"):
+            raw = raw.split("```")[1]
+            if raw.startswith("json"):
+                raw = raw[4:]
+            raw = raw.strip()
+
+        insights = json.loads(raw)
+
+        generated_at = f"Generated at {datetime.now().strftime('%d %b %Y, %H:%M')} · Powered by Claude"
+
+        return (
+            insights.get('summary', ''),
+            insights.get('strengths', ''),
+            insights.get('risks', ''),
+            insights.get('recommendations', ''),
+            insights.get('forecast', ''),
+            generated_at,
+            {'display': 'block'},   # ai-results
+            hidden,                  # ai-loading
+            hidden,                  # ai-empty
+            '',                      # ai-error-msg children
+            hidden,                  # ai-error-msg style
+        )
+
+    except json.JSONDecodeError as e:
+        print(f"[ai] JSON parse error: {e}\nRaw: {raw[:300]}")
+        return ('', '', '', '', '', '',
+                hidden, hidden, {'display':'block'},
+                'AI returned an unexpected format. Please try again.', err_show)
+    except Exception as e:
+        print(f"[ai] API error: {e}")
+        return ('', '', '', '', '', '',
+                hidden, hidden, {'display':'block'},
+                f'AI error: {str(e)}', err_show)
 
 
 if __name__ == '__main__':
