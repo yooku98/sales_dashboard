@@ -2,7 +2,6 @@ import base64
 import io
 import os
 import json
-from groq import Groq
 import pandas as pd
 from dash import Dash, dcc, html, Input, Output, State, dash_table, ctx, no_update
 from dash.exceptions import PreventUpdate
