@@ -2,7 +2,7 @@ import base64
 import io
 import os
 import json
-import anthropic
+from groq import Groq
 import pandas as pd
 from dash import Dash, dcc, html, Input, Output, State, dash_table, ctx, no_update
 from dash.exceptions import PreventUpdate
@@ -10,7 +10,8 @@ import plotly.express as px
 import plotly.graph_objects as go
 from datetime import datetime, timedelta
 from supabase import create_client, Client
-
+import requests
+import json
 # ── Supabase ───────────────────────────────────────────────────────────────────
 SUPABASE_URL = os.environ.get("SUPABASE_URL", "")
 SUPABASE_KEY = os.environ.get("SUPABASE_KEY", "")
@@ -18,7 +19,23 @@ supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
 
 # ── App ────────────────────────────────────────────────────────────────────────
 # ── Anthropic ─────────────────────────────────────────────────────────────────
-anthropic_client = anthropic.Anthropic(api_key=os.environ.get("ANTHROPIC_API_KEY", ""))
+response = requests.post(
+  url="https://openrouter.ai/api/v1/chat/completions",
+  headers={
+    "Authorization": "Bearer <OPENROUTER_API_KEY>",
+    "HTTP-Referer": "<YOUR_SITE_URL>", # Optional. Site URL for rankings on openrouter.ai.
+    "X-OpenRouter-Title": "<YOUR_SITE_NAME>", # Optional. Site title for rankings on openrouter.ai.
+  },
+  data=json.dumps({
+    "model": "openai/gpt-5.2", # Optional
+    "messages": [
+      {
+        "role": "user",
+        "content": "What is the meaning of life?"
+      }
+    ]
+  })
+)
 
 CEDI = '\u20b5'
 SITE_URL = os.environ.get("SITE_URL", "sales-dashboard.app")
