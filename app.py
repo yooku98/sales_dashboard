@@ -19,7 +19,7 @@ supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
 # ── OpenRouter ────────────────────────────────────────────────────────────────
 OPENROUTER_API_KEY = os.environ.get("OPENROUTER_API_KEY", "")
 OPENROUTER_URL     = "https://openrouter.ai/api/v1/chat/completions"
-OPENROUTER_MODEL   = "meta-llama/llama-3.1-8b-instruct:free"  # free model on OpenRouter
+OPENROUTER_MODEL = "openrouter/free"  # free model on OpenRouter
 
 CEDI = '\u20b5'
 SITE_URL = os.environ.get("SITE_URL", "sales-dashboard.app")
