@@ -19,7 +19,8 @@ supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
 # ── OpenRouter ────────────────────────────────────────────────────────────────
 OPENROUTER_API_KEY = os.environ.get("OPENROUTER_API_KEY", "")
 OPENROUTER_URL     = "https://openrouter.ai/api/v1/chat/completions"
-OPENROUTER_MODEL = "openrouter/free"  # auto-selects best available free model
+OPENROUTER_MODEL   = "meta-llama/llama-3.1-8b-instruct:free"  # free model on OpenRouter
+
 CEDI = '\u20b5'
 SITE_URL = os.environ.get("SITE_URL", "sales-dashboard.app")
 
@@ -2549,19 +2550,13 @@ def generate_ai_insights(n_clicks, session):
                 hidden, hidden, {'display':'block'},
                 'No data found. Upload or enter sales records first.', err_show)
 
-    prompt = f"""You are a business analyst. Analyse this Ghana-based business data (all amounts in Ghana Cedis GHS) and provide concise, practical insights.
+    prompt = f"""You are a business analyst. Analyse this Ghana-based business data (GHS amounts) and give brief insights.
 
-DATA SUMMARY:
+DATA:
 {json.dumps(data_summary, indent=2)}
 
-Respond ONLY with a valid JSON object — no markdown, no code blocks, no extra text — with exactly these keys:
-{{
-  "summary": "2-3 sentence executive summary of overall business health",
-  "strengths": "3-4 bullet points of what is working well (use • as bullet)",
-  "risks": "3-4 bullet points of concerns or risks (use • as bullet)",
-  "recommendations": "4-5 specific, actionable recommendations numbered 1. 2. 3. etc",
-  "forecast": "2-3 sentence outlook based on trends"
-}}"""
+Reply ONLY with this JSON — no markdown, no extra text, keep each value under 100 words:
+{{"summary":"1-2 sentences on business health","strengths":"2-3 bullet points using •","risks":"2-3 bullet points using •","recommendations":"3 numbered recommendations","forecast":"1-2 sentences on outlook"}}"""
 
     try:
         resp = requests.post(
@@ -2620,4 +2615,5 @@ Respond ONLY with a valid JSON object — no markdown, no code blocks, no extra 
 
 
 if __name__ == '__main__':
-    app.run(debug=True)
+    port = int(os.environ.get('PORT', 8050))
+    app.run(host='0.0.0.0', port=port, debug=False)
