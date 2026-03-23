@@ -4,4 +4,4 @@ plotly
 openpyxl
 gunicorn
 supabase
-openai
+requests

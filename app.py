@@ -10,31 +10,16 @@ import plotly.graph_objects as go
 from datetime import datetime, timedelta
 from supabase import create_client, Client
 import requests
-import json
 # ── Supabase ───────────────────────────────────────────────────────────────────
 SUPABASE_URL = os.environ.get("SUPABASE_URL", "")
 SUPABASE_KEY = os.environ.get("SUPABASE_KEY", "")
 supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
 
 # ── App ────────────────────────────────────────────────────────────────────────
-# ── Anthropic ─────────────────────────────────────────────────────────────────
-response = requests.post(
-  url="https://openrouter.ai/api/v1/chat/completions",
-  headers={
-    "Authorization": "Bearer <OPENROUTER_API_KEY>",
-    "HTTP-Referer": "<YOUR_SITE_URL>", # Optional. Site URL for rankings on openrouter.ai.
-    "X-OpenRouter-Title": "<YOUR_SITE_NAME>", # Optional. Site title for rankings on openrouter.ai.
-  },
-  data=json.dumps({
-    "model": "openai/gpt-5.2", # Optional
-    "messages": [
-      {
-        "role": "user",
-        "content": "What is the meaning of life?"
-      }
-    ]
-  })
-)
+# ── OpenRouter ────────────────────────────────────────────────────────────────
+OPENROUTER_API_KEY = os.environ.get("OPENROUTER_API_KEY", "")
+OPENROUTER_URL     = "https://openrouter.ai/api/v1/chat/completions"
+OPENROUTER_MODEL   = "meta-llama/llama-3.1-8b-instruct:free"  # free model on OpenRouter
 
 CEDI = '\u20b5'
 SITE_URL = os.environ.get("SITE_URL", "sales-dashboard.app")
@@ -2580,17 +2565,23 @@ Respond ONLY with a valid JSON object — no markdown, no code blocks, no extra 
 }}"""
 
     try:
-        api_key = os.environ.get("ANTHROPIC_API_KEY", "")
-        if not api_key:
-            raise ValueError("ANTHROPIC_API_KEY environment variable not set.")
-
-        client   = anthropic.Anthropic(api_key=api_key)
-        message  = client.messages.create(
-            model="claude-sonnet-4-20250514",
-            max_tokens=1024,
-            messages=[{"role": "user", "content": prompt}]
+        resp = requests.post(
+            OPENROUTER_URL,
+            headers={
+                "Authorization": f"Bearer {OPENROUTER_API_KEY}",
+                "Content-Type":  "application/json",
+                "HTTP-Referer":  SITE_URL,
+                "X-Title":       "Sales Dashboard",
+            },
+            json={
+                "model":      OPENROUTER_MODEL,
+                "max_tokens": 1024,
+                "messages":   [{"role": "user", "content": prompt}],
+            },
+            timeout=30,
         )
-        raw = message.content[0].text.strip()
+        resp.raise_for_status()
+        raw = resp.json()["choices"][0]["message"]["content"].strip()
 
         # Strip markdown code fences if present
         if raw.startswith("```"):
@@ -2601,7 +2592,7 @@ Respond ONLY with a valid JSON object — no markdown, no code blocks, no extra 
 
         insights = json.loads(raw)
 
-        generated_at = f"Generated at {datetime.now().strftime('%d %b %Y, %H:%M')} · Powered by Claude"
+        generated_at = f"Generated at {datetime.now().strftime('%d %b %Y, %H:%M')} · Powered by AI"
 
         return (
             insights.get('summary', ''),
