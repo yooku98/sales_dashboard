@@ -37,10 +37,10 @@ server = app.server
 
 # ── Design tokens ──────────────────────────────────────────────────────────────
 COLORS = {
-    'primary':   '#667eea', 'secondary': '#764ba2',
+    'primary':   '#5b5ef4', 'secondary': '#4c1d95',
     'success':   '#10b981', 'warning':   '#f59e0b',
     'danger':    '#ef4444', 'light':     '#f3f4f6',
-    'dark':      '#1f2937', 'white':     '#ffffff',
+    'dark':      '#1e1b4b', 'white':     '#ffffff',
 }
 CHART_H = 320
 BTN_BASE = {
@@ -74,17 +74,25 @@ AUTH_CARD = {
 
 CSS = f"""
 <style>
+/* ── YookuInc Analytics — Business Dashboard ── */
 *, *::before, *::after {{ box-sizing: border-box; }}
-body {{ margin: 0; padding: 0; -webkit-text-size-adjust: 100%; overflow-x: hidden; }}
+body {{ margin: 0; padding: 0; -webkit-text-size-adjust: 100%; overflow-x: hidden;
+       font-family: 'Segoe UI', system-ui, -apple-system, sans-serif; }}
 * {{ transition: background-color 0.2s, color 0.2s, border-color 0.2s; }}
-#app-header {{ padding: 28px 24px; text-align: center; }}
-@media (max-width: 500px) {{
-  #app-header {{ padding: 18px 14px; }}
-  .hdr-title {{ font-size: 1.4em !important; }}
-  .hdr-sub   {{ font-size: 0.85em !important; }}
+
+/* ── Header ── */
+#app-header {{
+  padding: 16px 24px 0;
+  background: linear-gradient(135deg, #1e1b4b 0%, #312e81 40%, #4c1d95 100%) !important;
+  box-shadow: 0 2px 24px rgba(0,0,0,0.35) !important;
 }}
-#main-container {{ max-width: 1400px; margin: 0 auto; padding: 0 20px; }}
-@media (max-width: 500px) {{ #main-container {{ padding: 0 12px; }} }}
+@media (max-width: 500px) {{
+  #app-header {{ padding: 12px 14px 0; }}
+  .hdr-title {{ font-size: 1.25em !important; }}
+  .hdr-sub   {{ font-size: 0.78em !important; }}
+}}
+#main-container {{ max-width: 1280px; margin: 0 auto; padding: 0 20px; }}
+@media (max-width: 500px) {{ #main-container {{ padding: 0 10px; }} }}
 #stats-cards {{
   display: grid; grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 14px; margin-bottom: 18px;
@@ -105,10 +113,11 @@ body {{ margin: 0; padding: 0; -webkit-text-size-adjust: 100%; overflow-x: hidde
 .chart-card {{
   background: var(--card-bg, white);
   border: 1px solid var(--card-border, #e5e7eb);
-  border-radius: 14px; padding: 20px 20px 12px;
-  box-shadow: 0 2px 10px rgba(0,0,0,0.12); min-width: 0;
-  transition: background 0.2s;
+  border-radius: 16px; padding: 20px 20px 12px;
+  box-shadow: 0 4px 16px rgba(0,0,0,0.08); min-width: 0;
+  transition: background 0.2s, box-shadow 0.2s;
 }}
+.chart-card:hover {{ box-shadow: 0 6px 24px rgba(0,0,0,0.12); }}
 .graph-wrap {{ width: 100%; height: {CHART_H}px; position: relative; }}
 .graph-wrap .js-plotly-plot,
 .graph-wrap .plot-container,
@@ -116,8 +125,8 @@ body {{ margin: 0; padding: 0; -webkit-text-size-adjust: 100%; overflow-x: hidde
 .input-card {{
   background: var(--card-bg, white);
   border: 1px solid var(--card-border, #e5e7eb);
-  border-radius: 14px; padding: 24px;
-  box-shadow: 0 2px 10px rgba(0,0,0,0.12); margin-bottom: 18px;
+  border-radius: 16px; padding: 22px 24px;
+  box-shadow: 0 4px 16px rgba(0,0,0,0.07); margin-bottom: 18px;
   transition: background 0.2s;
 }}
 #manual-form-grid {{
@@ -139,10 +148,11 @@ body {{ margin: 0; padding: 0; -webkit-text-size-adjust: 100%; overflow-x: hidde
 .stat-card {{
   background: var(--card-bg, white);
   border: 1px solid var(--card-border, #e5e7eb);
-  border-radius: 12px; padding: 18px;
-  box-shadow: 0 2px 8px rgba(0,0,0,0.12); min-width: 0;
-  transition: background 0.2s;
+  border-radius: 14px; padding: 20px;
+  box-shadow: 0 4px 14px rgba(0,0,0,0.08); min-width: 0;
+  transition: background 0.2s, transform 0.15s, box-shadow 0.15s;
 }}
+.stat-card:hover {{ transform: translateY(-2px); box-shadow: 0 8px 24px rgba(0,0,0,0.12); }}
 @media (max-width: 500px) {{
   .stat-card {{ padding: 14px; }}
   .stat-val  {{ font-size: 1.35em !important; }}
@@ -178,12 +188,12 @@ body {{ margin: 0; padding: 0; -webkit-text-size-adjust: 100%; overflow-x: hidde
 
 /* Progress bar */
 .progress-outer {{
-  height: 18px; border-radius: 9px;
+  height: 10px; border-radius: 5px;
   background: var(--card-border, #e5e7eb);
-  overflow: hidden; margin: 10px 0 6px;
+  overflow: hidden; margin: 10px 0 4px;
 }}
 .progress-inner {{
-  height: 100%; border-radius: 9px;
+  height: 100%; border-radius: 5px;
   transition: width 0.6s ease;
 }}
 
@@ -332,15 +342,18 @@ input#signup-email:focus, input#signup-password:focus {{
 
 /* ── Main section tabs ── */
 .main-tabs {{
-  display: flex; gap: 4px; margin: 12px 0 0;
+  display: flex; gap: 4px; margin: 14px 0 0;
 }}
 .main-tabs .tab-btn {{
-  padding: 9px 22px; border: none; cursor: pointer;
-  font-size: 0.88em; font-weight: 600; transition: all 0.18s;
-  background: rgba(255,255,255,0.13); color: rgba(255,255,255,0.7);
-  border-radius: 8px 8px 0 0;
+  padding: 10px 24px; border: none; cursor: pointer;
+  font-size: 0.87em; font-weight: 700; transition: all 0.18s;
+  background: rgba(255,255,255,0.10); color: rgba(255,255,255,0.65);
+  border-radius: 10px 10px 0 0; letter-spacing: 0.02em;
 }}
-.main-tabs .tab-btn.active {{ background: white; color: #667eea; }}
+.main-tabs .tab-btn:hover {{ background: rgba(255,255,255,0.18); color: white; }}
+.main-tabs .tab-btn.active {{
+  background: var(--page-bg, #f3f4f6); color: #4c1d95; font-weight: 800;
+}}
 .tab-panel {{ visibility: hidden; height: 0; overflow: hidden; }}
 .tab-panel.active {{ visibility: visible; height: auto; overflow: visible; }}
 /* Expense grids */
@@ -404,11 +417,36 @@ input#signup-email:focus, input#signup-password:focus {{
   box-shadow: 0 2px 10px rgba(0,0,0,0.08); margin-bottom: 18px;
 }}
 
+/* ── Mobile date input native styling ── */
+input[type=date] {{
+  -webkit-appearance: none; appearance: none;
+  min-height: 42px; cursor: pointer;
+}}
+input[type=date]::-webkit-calendar-picker-indicator {{
+  opacity: 0.6; cursor: pointer; padding: 2px;
+}}
+
 /* ── Fix dropdown / datepicker overlap ── */
 #filter-bar, #exp-filter-bar {{ position: relative; z-index: 50; }}
 .Select-menu-outer {{ z-index: 200 !important; }}
-.DateRangePicker_picker, .SingleDatePicker_picker {{ z-index: 200 !important; }}
 .graph-wrap {{ overflow: hidden; }}
+
+/* ── YookuInc footer branding ── */
+.yooku-footer {{
+  text-align: center; padding: 16px 0 28px;
+  font-size: 0.78em; color: var(--sub-text, #9ca3af);
+  border-top: 1px solid var(--card-border, #e5e7eb);
+  margin-top: 8px;
+}}
+.yooku-footer a {{ color: #667eea; text-decoration: none; font-weight: 600; }}
+.yooku-footer a:hover {{ text-decoration: underline; }}
+.yooku-brand-badge {{
+  display: inline-flex; align-items: center; gap: 6px;
+  background: linear-gradient(135deg, #1e1b4b, #4c1d95);
+  color: white; padding: 3px 12px; border-radius: 20px;
+  font-size: 0.78em; font-weight: 700; margin-top: 6px;
+  letter-spacing: 0.04em;
+}}
 
 /* ── Edit record modal ── */
 #sale-edit-modal, #exp-edit-modal {{
@@ -728,8 +766,8 @@ THEME = {
         'paper_bg':  'white',
         'grid':      '#e5e7eb',
         'grid_dash': 'solid',
-        'line':      '#667eea',
-        'fill':      'rgba(102,126,234,0.08)',
+        'line':      '#5b5ef4',
+        'fill':      'rgba(91,94,244,0.07)',
         'tick':      '#6b7280',
         'axis_line': '#e5e7eb',
         'anno':      '#9ca3af',
@@ -838,38 +876,50 @@ def dashboard_layout():
 
             # ── Header ────────────────────────────────────────────────────────
             html.Div(id='app-header', style={
-                'background': f'linear-gradient(135deg, {COLORS["primary"]} 0%, {COLORS["secondary"]} 100%)',
-                'color': 'white', 'boxShadow': '0 4px 14px rgba(102,126,234,0.3)',
-                'marginBottom': '0', 'padding': '20px 24px',
+                'color': 'white', 'marginBottom': '0',
             }, children=[
                 html.Div(style={'display': 'flex', 'justifyContent': 'space-between',
-                                'alignItems': 'center', 'flexWrap': 'wrap', 'gap': '10px'}, children=[
-                    html.H1('\U0001f4ca Sales & Expense Dashboard', className='hdr-title',
-                            style={'margin': '0', 'fontSize': '1.9em', 'fontWeight': '700'}),
-                    html.Div(style={'display': 'flex', 'gap': '8px', 'alignItems': 'center'}, children=[
-                        html.Button('\U0001f4e5 Export', id='export-btn', n_clicks=0,
-                                    style={'background': 'rgba(255,255,255,0.15)', 'color': 'white',
-                                           'border': '1.5px solid rgba(255,255,255,0.5)', 'borderRadius': '20px',
-                                           'padding': '7px 14px', 'fontSize': '0.85em', 'fontWeight': '600',
-                                           'cursor': 'pointer', 'whiteSpace': 'nowrap', 'flexShrink': '0'}),
-                        html.Button(id='theme-toggle-btn', n_clicks=0,
-                                    style={'background': 'rgba(255,255,255,0.15)', 'color': 'white',
-                                           'border': '1.5px solid rgba(255,255,255,0.5)', 'borderRadius': '20px',
-                                           'padding': '7px 14px', 'fontSize': '0.85em', 'fontWeight': '600',
-                                           'cursor': 'pointer', 'whiteSpace': 'nowrap', 'flexShrink': '0'}),
-                        html.Button('\U0001f6aa Sign Out', id='signout-btn', n_clicks=0,
-                                    style={'background': 'rgba(255,255,255,0.2)', 'color': 'white',
-                                           'border': '1.5px solid rgba(255,255,255,0.6)', 'borderRadius': '20px',
-                                           'padding': '7px 16px', 'fontSize': '0.85em', 'fontWeight': '600',
-                                           'cursor': 'pointer', 'whiteSpace': 'nowrap', 'flexShrink': '0'}),
+                                'alignItems': 'center', 'flexWrap': 'wrap', 'gap': '10px',
+                                'padding': '16px 24px 12px'}, children=[
+                    # Brand block
+                    html.Div(children=[
+                        html.Div(style={'display': 'flex', 'alignItems': 'baseline', 'gap': '10px',
+                                        'flexWrap': 'wrap'}, children=[
+                            html.H1('\U0001f4ca YookuInc Analytics', className='hdr-title',
+                                    style={'margin': '0', 'fontSize': '1.75em', 'fontWeight': '800',
+                                           'letterSpacing': '-0.02em'}),
+                            html.Span('Sales & Expense Intelligence',
+                                      style={'fontSize': '0.72em', 'opacity': '0.6',
+                                             'fontWeight': '400', 'letterSpacing': '0.03em'}),
+                        ]),
+                        html.Div(style={'marginTop': '4px', 'display': 'flex', 'gap': '14px',
+                                        'alignItems': 'center', 'flexWrap': 'wrap'}, children=[
+                            html.Span(id='user-greeting',
+                                      style={'fontSize': '0.85em', 'opacity': '0.85', 'fontWeight': '500'}),
+                            html.Span(f'{CEDI} Ghana Cedis \u2014 Supabase',
+                                      className='hdr-sub',
+                                      style={'fontSize': '0.75em', 'opacity': '0.55'}),
+                        ]),
                     ]),
-                ]),
-                html.Div(style={'marginTop': '8px'}, children=[
-                    html.Span(id='user-greeting',
-                              style={'fontSize': '0.95em', 'opacity': '0.95', 'fontWeight': '500'}),
-                    html.P(f'Track sales & expenses in Ghana Cedis ({CEDI}) \u2014 data saved to Supabase',
-                           className='hdr-sub',
-                           style={'margin': '3px 0 0', 'fontSize': '0.85em', 'opacity': '0.75'}),
+                    # Action buttons
+                    html.Div(style={'display': 'flex', 'gap': '8px', 'alignItems': 'center',
+                                    'flexShrink': '0'}, children=[
+                        html.Button('\U0001f4e5 Export', id='export-btn', n_clicks=0,
+                                    style={'background': 'rgba(255,255,255,0.12)', 'color': 'white',
+                                           'border': '1.5px solid rgba(255,255,255,0.3)', 'borderRadius': '20px',
+                                           'padding': '7px 14px', 'fontSize': '0.82em', 'fontWeight': '600',
+                                           'cursor': 'pointer', 'whiteSpace': 'nowrap'}),
+                        html.Button(id='theme-toggle-btn', n_clicks=0,
+                                    style={'background': 'rgba(255,255,255,0.12)', 'color': 'white',
+                                           'border': '1.5px solid rgba(255,255,255,0.3)', 'borderRadius': '20px',
+                                           'padding': '7px 14px', 'fontSize': '0.82em', 'fontWeight': '600',
+                                           'cursor': 'pointer', 'whiteSpace': 'nowrap'}),
+                        html.Button('\U0001f6aa Sign Out', id='signout-btn', n_clicks=0,
+                                    style={'background': 'rgba(255,255,255,0.18)', 'color': 'white',
+                                           'border': '1.5px solid rgba(255,255,255,0.4)', 'borderRadius': '20px',
+                                           'padding': '7px 14px', 'fontSize': '0.82em', 'fontWeight': '600',
+                                           'cursor': 'pointer', 'whiteSpace': 'nowrap'}),
+                    ]),
                 ]),
                 html.Div(className='main-tabs', children=[
                     html.Button('\U0001f4ca Sales', id='btn-sales', n_clicks=0,
@@ -908,9 +958,8 @@ def dashboard_layout():
                     html.H3('\u270f\ufe0f Edit Sale Record',
                             style={'margin': '0 0 20px', 'fontSize': '1.15em',
                                    'color': 'var(--text, #1f2937)'}),
-                    html.Div([html.Label('Date (YYYY-MM-DD)', style=LABEL_STYLE),
-                              dcc.Input(id='edit-sale-date', type='text', style=INPUT_STYLE,
-                                        placeholder='YYYY-MM-DD')],
+                    html.Div([html.Label('Date', style=LABEL_STYLE),
+                              dcc.Input(id='edit-sale-date', type='date', style=INPUT_STYLE)],
                              style={'marginBottom': '14px'}),
                     html.Div([html.Label('Product', style=LABEL_STYLE),
                               dcc.Input(id='edit-sale-product', type='text', style=INPUT_STYLE)],
@@ -943,9 +992,8 @@ def dashboard_layout():
                     html.H3('\u270f\ufe0f Edit Expense Record',
                             style={'margin': '0 0 20px', 'fontSize': '1.15em',
                                    'color': 'var(--text, #1f2937)'}),
-                    html.Div([html.Label('Date (YYYY-MM-DD)', style=LABEL_STYLE),
-                              dcc.Input(id='edit-exp-date', type='text', style=INPUT_STYLE,
-                                        placeholder='YYYY-MM-DD')],
+                    html.Div([html.Label('Date', style=LABEL_STYLE),
+                              dcc.Input(id='edit-exp-date', type='date', style=INPUT_STYLE)],
                              style={'marginBottom': '14px'}),
                     html.Div([html.Label('Vendor', style=LABEL_STYLE),
                               dcc.Input(id='edit-exp-vendor', type='text', style=INPUT_STYLE)],
@@ -1012,10 +1060,9 @@ def dashboard_layout():
                                     style={'color': 'var(--text,#1f2937)', 'fontSize': '1.2em', 'margin': '0 0 14px'}),
                             html.Div(id='manual-form-grid', children=[
                                 html.Div([html.Label('Date', style=LABEL_STYLE),
-                                          dcc.DatePickerSingle(id='input-date',
-                                                               date=datetime.today().strftime('%Y-%m-%d'),
-                                                               display_format='YYYY-MM-DD',
-                                                               style={'width': '100%'})]),
+                                          dcc.Input(id='input-date', type='date',
+                                                    value=datetime.today().strftime('%Y-%m-%d'),
+                                                    style=INPUT_STYLE)]),
                                 html.Div([html.Label('Product', style=LABEL_STYLE),
                                           dcc.Input(id='input-product', type='text',
                                                     placeholder='Product name', style=INPUT_STYLE)]),
@@ -1040,9 +1087,10 @@ def dashboard_layout():
                     ]),
 
                     html.Div(id='filter-bar', children=[
-                        html.Div([html.Label('\U0001f4c5 Date Range', style={**LABEL_STYLE, 'marginBottom': '6px'}),
-                                  dcc.DatePickerRange(id='filter-date-range', display_format='YYYY-MM-DD',
-                                                     style={'width': '100%'})]),
+                        html.Div([html.Label('\U0001f4c5 From', style={**LABEL_STYLE, 'marginBottom': '6px'}),
+                                  dcc.Input(id='filter-start-date', type='date', style=INPUT_STYLE)]),
+                        html.Div([html.Label('\U0001f4c5 To', style={**LABEL_STYLE, 'marginBottom': '6px'}),
+                                  dcc.Input(id='filter-end-date', type='date', style=INPUT_STYLE)]),
                         html.Div([html.Label('\U0001f3f7\ufe0f Product(s)', style={**LABEL_STYLE, 'marginBottom': '6px'}),
                                   dcc.Dropdown(id='filter-products', multi=True,
                                                placeholder='All products\u2026', style={'fontSize': '0.93em'})]),
@@ -1141,16 +1189,31 @@ def dashboard_layout():
                         ]),
                     ]),
 
+                    html.Div(id='sale-table-actions', style={'display': 'none'}, children=[
+                        html.Span('\U0001f447 Select a row in the table below, then:',
+                                  style={'fontSize': '0.82em', 'color': 'var(--sub-text, #6b7280)',
+                                         'flexBasis': '100%'}),
+                        html.Button('\u270f\ufe0f Edit Selected', id='sale-edit-btn', n_clicks=0,
+                                    style={**BTN_BASE, 'padding': '8px 16px',
+                                           'backgroundColor': COLORS['primary'], 'color': 'white',
+                                           'fontSize': '0.85em'}),
+                        html.Button('\U0001f5d1\ufe0f Delete Selected', id='sale-delete-btn', n_clicks=0,
+                                    style={**BTN_BASE, 'padding': '8px 16px',
+                                           'backgroundColor': COLORS['danger'], 'color': 'white',
+                                           'fontSize': '0.85em'}),
+                        html.Span(id='sale-action-hint',
+                                  style={'fontSize': '0.8em', 'color': COLORS['danger'],
+                                         'fontWeight': '500'}),
+                    ]),
                     html.Div(id='data-table-container', style={'marginBottom': '24px'}),
 
-                    html.Div(style={'textAlign': 'center', 'padding': '10px 0 24px',
-                                    'color': '#9ca3af', 'fontSize': '0.82em'},
-                             children=[html.Ul(
-                                 html.Li(html.A('Designed by William Thompson',
-                                                href='https://yooku98.github.io/Portfolio-Website/index.html',
-                                                style={'color': COLORS['primary']})),
-                                 style={'listStyle': 'none', 'padding': 0, 'margin': 0},
-                             )]),
+                    html.Div(className='yooku-footer', children=[
+                        html.Div('Powered by'),
+                        html.Div(html.A('YookuInc Analytics',
+                                        href='https://yooku98.github.io/Portfolio-Website/index.html',
+                                        target='_blank'),
+                                 className='yooku-brand-badge'),
+                    ]),
                 ]),
                 ]),  # end panel-sales
 
@@ -1191,10 +1254,9 @@ def dashboard_layout():
                                     style={'color': 'var(--text,#1f2937)', 'fontSize': '1.2em', 'margin': '0 0 14px'}),
                             html.Div(id='exp-manual-form-grid', children=[
                                 html.Div([html.Label('Date', style=LABEL_STYLE),
-                                          dcc.DatePickerSingle(id='exp-input-date',
-                                                               date=datetime.today().strftime('%Y-%m-%d'),
-                                                               display_format='YYYY-MM-DD',
-                                                               style={'width': '100%'})]),
+                                          dcc.Input(id='exp-input-date', type='date',
+                                                    value=datetime.today().strftime('%Y-%m-%d'),
+                                                    style=INPUT_STYLE)]),
                                 html.Div([html.Label('Vendor / Description', style=LABEL_STYLE),
                                           dcc.Input(id='exp-input-vendor', type='text',
                                                     placeholder='e.g. Electricity bill', style=INPUT_STYLE)]),
@@ -1219,9 +1281,10 @@ def dashboard_layout():
                     ]),
 
                     html.Div(id='exp-filter-bar', children=[
-                        html.Div([html.Label('\U0001f4c5 Date Range', style={**LABEL_STYLE, 'marginBottom': '6px'}),
-                                  dcc.DatePickerRange(id='exp-filter-date-range', display_format='YYYY-MM-DD',
-                                                     style={'width': '100%'})]),
+                        html.Div([html.Label('\U0001f4c5 From', style={**LABEL_STYLE, 'marginBottom': '6px'}),
+                                  dcc.Input(id='exp-filter-start-date', type='date', style=INPUT_STYLE)]),
+                        html.Div([html.Label('\U0001f4c5 To', style={**LABEL_STYLE, 'marginBottom': '6px'}),
+                                  dcc.Input(id='exp-filter-end-date', type='date', style=INPUT_STYLE)]),
                         html.Div([html.Label('\U0001f3f7\ufe0f Vendor(s)', style={**LABEL_STYLE, 'marginBottom': '6px'}),
                                   dcc.Dropdown(id='exp-filter-vendors', multi=True,
                                                placeholder='All vendors\u2026', style={'fontSize': '0.93em'})]),
@@ -1320,6 +1383,22 @@ def dashboard_layout():
                         ]),
                     ]),
 
+                    html.Div(id='exp-table-actions', style={'display': 'none'}, children=[
+                        html.Span('\U0001f447 Select a row in the table below, then:',
+                                  style={'fontSize': '0.82em', 'color': 'var(--sub-text, #6b7280)',
+                                         'flexBasis': '100%'}),
+                        html.Button('\u270f\ufe0f Edit Selected', id='exp-edit-btn', n_clicks=0,
+                                    style={**BTN_BASE, 'padding': '8px 16px',
+                                           'backgroundColor': COLORS['warning'], 'color': 'white',
+                                           'fontSize': '0.85em'}),
+                        html.Button('\U0001f5d1\ufe0f Delete Selected', id='exp-delete-btn', n_clicks=0,
+                                    style={**BTN_BASE, 'padding': '8px 16px',
+                                           'backgroundColor': COLORS['danger'], 'color': 'white',
+                                           'fontSize': '0.85em'}),
+                        html.Span(id='exp-action-hint',
+                                  style={'fontSize': '0.8em', 'color': COLORS['danger'],
+                                         'fontWeight': '500'}),
+                    ]),
                     html.Div(id='exp-table-container', style={'marginBottom': '24px'}),
 
                 ]),
@@ -1657,7 +1736,7 @@ app.clientside_callback(
     Input('add-data-btn',    'n_clicks'),
     Input('clear-data-btn',  'n_clicks'),
     Input('upload-data',     'contents'),
-    State('input-date',      'date'),
+    State('input-date',      'value'),
     State('input-product',   'value'),
     State('input-sales',     'value'),
     State('input-category',  'value'),
@@ -1725,12 +1804,10 @@ def manage_data(add_clicks, clear_clicks, upload_contents,
 
 # ── Filter bar population ──────────────────────────────────────────────────────
 @app.callback(
-    Output('filter-products',   'options'),
-    Output('filter-categories', 'options'),
-    Output('filter-date-range', 'min_date_allowed'),
-    Output('filter-date-range', 'max_date_allowed'),
-    Output('filter-date-range', 'start_date'),
-    Output('filter-date-range', 'end_date'),
+    Output('filter-products',    'options'),
+    Output('filter-categories',  'options'),
+    Output('filter-start-date',  'value'),
+    Output('filter-end-date',    'value'),
     Input('stored-data',  'data'),
     Input('session-store','data'),
     Input('reset-filters-btn', 'n_clicks'),
@@ -1741,7 +1818,7 @@ def populate_filters(stored_data, session, _reset):
     data = records_to_df(records)
 
     if data.empty:
-        return [], [], None, None, None, None
+        return [], [], None, None
 
     products   = sorted(data['product'].dropna().unique().tolist())
     categories = sorted([c for c in data['category'].unique() if c])
@@ -1750,7 +1827,7 @@ def populate_filters(stored_data, session, _reset):
     return (
         [{'label': p, 'value': p} for p in products],
         [{'label': c, 'value': c} for c in categories],
-        min_d, max_d, min_d, max_d,
+        min_d, max_d,
     )
 
 # ── Main dashboard update ──────────────────────────────────────────────────────
@@ -1765,11 +1842,12 @@ def populate_filters(stored_data, session, _reset):
     Output('dashboard-wrapper',    'style'),
     Output('target-progress-bar',  'style'),
     Output('target-progress-text', 'children'),
+    Output('sale-table-actions',   'style'),
     Input('stored-data',           'data'),
     Input('session-store',         'data'),
     Input('theme-store',           'data'),
-    Input('filter-date-range',     'start_date'),
-    Input('filter-date-range',     'end_date'),
+    Input('filter-start-date',     'value'),
+    Input('filter-end-date',       'value'),
     Input('filter-products',       'value'),
     Input('filter-categories',     'value'),
     Input('target-input',          'value'),
@@ -1900,19 +1978,6 @@ def update_dashboard(stored_data, session, theme,
                           style={'backgroundColor': COLORS['primary'], 'color': 'white',
                                  'padding': '3px 12px', 'borderRadius': '20px',
                                  'fontSize': '0.8em', 'fontWeight': '600'}),
-                html.Div(className='tbl-actions', children=[
-                    html.Button('\u270f\ufe0f Edit', id='sale-edit-btn', n_clicks=0,
-                                style={**BTN_BASE, 'padding': '6px 14px',
-                                       'backgroundColor': COLORS['primary'], 'color': 'white',
-                                       'fontSize': '0.82em'}),
-                    html.Button('\U0001f5d1\ufe0f Delete', id='sale-delete-btn', n_clicks=0,
-                                style={**BTN_BASE, 'padding': '6px 14px',
-                                       'backgroundColor': COLORS['danger'], 'color': 'white',
-                                       'fontSize': '0.82em'}),
-                    html.Span('Select a row first', id='sale-action-hint',
-                              style={'fontSize': '0.78em', 'color': th['sub_text'],
-                                     'fontStyle': 'italic'}),
-                ]),
             ]),
             dash_table.DataTable(
                 id='data-table', data=disp.to_dict('records'),
@@ -1958,8 +2023,13 @@ def update_dashboard(stored_data, session, theme,
         '--input-text':  th['input_text'],
         '--input-border':th['input_border'],
     }
+    actions_style = {
+        'display': 'flex', 'marginBottom': '8px', 'padding': '12px 16px',
+        'background': th['card_bg'], 'border': f'1px solid {th["card_border"]}',
+        'borderRadius': '10px', 'gap': '10px', 'alignItems': 'center', 'flexWrap': 'wrap',
+    } if not data.empty else {'display': 'none'}
     return (line_fig, bar_fig, donut_fig, mom_fig, heat_fig,
-            stats, tbl, wrapper_style, progress_bar_style, prog_text)
+            stats, tbl, wrapper_style, progress_bar_style, prog_text, actions_style)
 
 
 # ── Chart builders ─────────────────────────────────────────────────────────────
@@ -2187,7 +2257,7 @@ def switch_exp_tabs(_u, _m):
     Input('exp-add-btn',         'n_clicks'),
     Input('exp-clear-btn',       'n_clicks'),
     Input('exp-upload-data',     'contents'),
-    State('exp-input-date',      'date'),
+    State('exp-input-date',      'value'),
     State('exp-input-vendor',    'value'),
     State('exp-input-amount',    'value'),
     State('exp-input-category',  'value'),
@@ -2256,24 +2326,22 @@ def manage_expense_data(add_clicks, clear_clicks, upload_contents,
 
 # ── Expense filter population ──────────────────────────────────────────────────
 @app.callback(
-    Output('exp-filter-vendors',    'options'),
-    Output('exp-filter-categories', 'options'),
-    Output('exp-filter-date-range', 'min_date_allowed'),
-    Output('exp-filter-date-range', 'max_date_allowed'),
-    Output('exp-filter-date-range', 'start_date'),
-    Output('exp-filter-date-range', 'end_date'),
-    Input('session-store',          'data'),
-    Input('exp-reset-filters-btn',  'n_clicks'),
-    Input('exp-refresh',            'data'),
+    Output('exp-filter-vendors',       'options'),
+    Output('exp-filter-categories',    'options'),
+    Output('exp-filter-start-date',    'value'),
+    Output('exp-filter-end-date',      'value'),
+    Input('session-store',             'data'),
+    Input('exp-reset-filters-btn',     'n_clicks'),
+    Input('exp-refresh',               'data'),
 )
 def populate_expense_filters(session, _reset, _refresh):
     user_id = (session or {}).get('user_id')
     if not user_id:
-        return [], [], None, None, None, None
+        return [], [], None, None
     records = load_expense_data(user_id)
     data    = expense_records_to_df(records)
     if data.empty:
-        return [], [], None, None, None, None
+        return [], [], None, None
     vendors    = sorted(data['vendor'].dropna().unique().tolist())
     categories = sorted([c for c in data['category'].unique() if c])
     min_d = data['date'].min().strftime('%Y-%m-%d')
@@ -2281,7 +2349,7 @@ def populate_expense_filters(session, _reset, _refresh):
     return (
         [{'label': v, 'value': v} for v in vendors],
         [{'label': c, 'value': c} for c in categories],
-        min_d, max_d, min_d, max_d,
+        min_d, max_d,
     )
 
 
@@ -2296,10 +2364,11 @@ def populate_expense_filters(session, _reset, _refresh):
     Output('exp-table-container',      'children'),
     Output('exp-budget-progress-bar',  'style'),
     Output('exp-budget-progress-text', 'children'),
+    Output('exp-table-actions',        'style'),
     Input('session-store',             'data'),
     Input('theme-store',               'data'),
-    Input('exp-filter-date-range',     'start_date'),
-    Input('exp-filter-date-range',     'end_date'),
+    Input('exp-filter-start-date',     'value'),
+    Input('exp-filter-end-date',       'value'),
     Input('exp-filter-vendors',        'value'),
     Input('exp-filter-categories',     'value'),
     Input('exp-budget-input',          'value'),
@@ -2535,19 +2604,6 @@ def update_expense_dashboard(session, theme, start_date, end_date,
                           style={'backgroundColor': COLORS['danger'], 'color': 'white',
                                  'padding': '3px 12px', 'borderRadius': '20px',
                                  'fontSize': '0.8em', 'fontWeight': '600'}),
-                html.Div(className='tbl-actions', children=[
-                    html.Button('\u270f\ufe0f Edit', id='exp-edit-btn', n_clicks=0,
-                                style={**BTN_BASE, 'padding': '6px 14px',
-                                       'backgroundColor': COLORS['warning'], 'color': 'white',
-                                       'fontSize': '0.82em'}),
-                    html.Button('\U0001f5d1\ufe0f Delete', id='exp-delete-btn', n_clicks=0,
-                                style={**BTN_BASE, 'padding': '6px 14px',
-                                       'backgroundColor': COLORS['danger'], 'color': 'white',
-                                       'fontSize': '0.82em'}),
-                    html.Span('Select a row first', id='exp-action-hint',
-                              style={'fontSize': '0.78em', 'color': th['sub_text'],
-                                     'fontStyle': 'italic'}),
-                ]),
             ]),
             dash_table.DataTable(
                 id='exp-data-table', data=disp.to_dict('records'),
@@ -2577,7 +2633,12 @@ def update_expense_dashboard(session, theme, start_date, end_date,
             ),
         ])
 
-    return line_fig, bar_fig, donut_fig, mom_fig, heat_fig, stats, tbl, prog_style, prog_text
+    exp_actions_style = {
+        'display': 'flex', 'marginBottom': '8px', 'padding': '12px 16px',
+        'background': th['card_bg'], 'border': f'1px solid {th["card_border"]}',
+        'borderRadius': '10px', 'gap': '10px', 'alignItems': 'center', 'flexWrap': 'wrap',
+    } if not data.empty else {'display': 'none'}
+    return line_fig, bar_fig, donut_fig, mom_fig, heat_fig, stats, tbl, prog_style, prog_text, exp_actions_style
 
 
 # ── Main tab switcher (updated for 3 tabs) ────────────────────────────────────
@@ -2796,8 +2857,12 @@ def open_sale_edit_modal(edit_n, cancel_n, selected_rows, table_data):
         return MODAL_CLOSE, no_update, no_update, no_update, no_update, no_update, ''
     if tid == 'sale-edit-btn':
         if not selected_rows or not table_data:
-            raise PreventUpdate
+            return no_update, no_update, no_update, no_update, no_update, no_update, \
+                   '\u26a0\ufe0f Please select a row in the table first.'
         row = table_data[selected_rows[0]]
+        if not row.get('id'):
+            return no_update, no_update, no_update, no_update, no_update, no_update, \
+                   '\u26a0\ufe0f Record has no ID — try refreshing the page.'
         return (MODAL_OPEN, row.get('date', ''), row.get('product', ''),
                 row.get('sales', ''), row.get('category', ''),
                 row.get('id'), '')
@@ -2880,8 +2945,12 @@ def open_exp_edit_modal(edit_n, cancel_n, selected_rows, table_data):
         return MODAL_CLOSE, no_update, no_update, no_update, no_update, no_update, ''
     if tid == 'exp-edit-btn':
         if not selected_rows or not table_data:
-            raise PreventUpdate
+            return no_update, no_update, no_update, no_update, no_update, no_update, \
+                   '\u26a0\ufe0f Please select a row in the table first.'
         row = table_data[selected_rows[0]]
+        if not row.get('id'):
+            return no_update, no_update, no_update, no_update, no_update, no_update, \
+                   '\u26a0\ufe0f Record has no ID — try refreshing the page.'
         return (MODAL_OPEN, row.get('date', ''), row.get('vendor', ''),
                 row.get('amount', ''), row.get('category', ''),
                 row.get('id'), '')
