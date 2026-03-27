@@ -403,6 +403,34 @@ input#signup-email:focus, input#signup-password:focus {{
   border-radius: 14px; padding: 20px 24px;
   box-shadow: 0 2px 10px rgba(0,0,0,0.08); margin-bottom: 18px;
 }}
+
+/* ── Fix dropdown / datepicker overlap ── */
+#filter-bar, #exp-filter-bar {{ position: relative; z-index: 50; }}
+.Select-menu-outer {{ z-index: 200 !important; }}
+.DateRangePicker_picker, .SingleDatePicker_picker {{ z-index: 200 !important; }}
+.graph-wrap {{ overflow: hidden; }}
+
+/* ── Edit record modal ── */
+#sale-edit-modal, #exp-edit-modal {{
+  display: none; position: fixed; inset: 0;
+  background: rgba(0,0,0,0.55); z-index: 30000;
+  align-items: center; justify-content: center;
+}}
+#sale-edit-modal.open, #exp-edit-modal.open {{ display: flex; }}
+#sale-edit-modal-inner, #exp-edit-modal-inner {{
+  background: var(--card-bg, white); border-radius: 16px;
+  padding: 28px 32px; width: 420px; max-width: 92vw;
+  box-shadow: 0 8px 40px rgba(0,0,0,0.3); color: var(--text, #1f2937);
+}}
+#sale-edit-modal-inner input, #exp-edit-modal-inner input {{
+  background: var(--input-bg, white) !important;
+  color: var(--input-text, #1f2937) !important;
+  border-color: var(--input-border, #e5e7eb) !important;
+}}
+
+/* ── Row action buttons in table header ── */
+.tbl-actions {{ display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }}
+.tbl-hdr {{ flex-wrap: wrap; gap: 10px; }}
 </style>
 """
 
@@ -548,14 +576,38 @@ def delete_expense_data(user_id: str):
     except Exception as e:
         print(f"[delete_expense_data] {e}")
 
+def update_sales_record(record_id: str, data: dict):
+    try:
+        supabase.table("sales_records").update(data).eq("id", record_id).execute()
+    except Exception as e:
+        print(f"[update_sales_record] {e}")
+
+def delete_sales_record(record_id: str):
+    try:
+        supabase.table("sales_records").delete().eq("id", record_id).execute()
+    except Exception as e:
+        print(f"[delete_sales_record] {e}")
+
+def update_expense_record(record_id: str, data: dict):
+    try:
+        supabase.table("expense_records").update(data).eq("id", record_id).execute()
+    except Exception as e:
+        print(f"[update_expense_record] {e}")
+
+def delete_expense_record(record_id: str):
+    try:
+        supabase.table("expense_records").delete().eq("id", record_id).execute()
+    except Exception as e:
+        print(f"[delete_expense_record] {e}")
+
 def expense_records_to_df(records):
     if not records:
-        return pd.DataFrame(columns=["date","vendor","amount","category"])
+        return pd.DataFrame(columns=["id","date","vendor","amount","category"])
     df = pd.DataFrame(records)
     df = clean_col_names(df)
-    for col in ["date","vendor","amount","category"]:
+    for col in ["id","date","vendor","amount","category"]:
         if col not in df.columns: df[col] = None
-    df = df[["date","vendor","amount","category"]].copy()
+    df = df[["id","date","vendor","amount","category"]].copy()
     df["amount"]   = pd.to_numeric(df["amount"], errors="coerce")
     df["date"]     = pd.to_datetime(df["date"], errors="coerce")
     df["category"] = df["category"].fillna("").astype(str)
@@ -593,13 +645,13 @@ def clean_col_names(df):
 
 def records_to_df(records):
     if not records:
-        return pd.DataFrame(columns=['date', 'product', 'sales', 'category'])
+        return pd.DataFrame(columns=['id', 'date', 'product', 'sales', 'category'])
     df = pd.DataFrame(records)
     df = clean_col_names(df)
-    for col in ['date', 'product', 'sales', 'category']:
+    for col in ['id', 'date', 'product', 'sales', 'category']:
         if col not in df.columns:
             df[col] = None
-    df = df[['date', 'product', 'sales', 'category']].copy()
+    df = df[['id', 'date', 'product', 'sales', 'category']].copy()
     df['sales']    = pd.to_numeric(df['sales'], errors='coerce')
     df['date']     = pd.to_datetime(df['date'], errors='coerce')
     df['category'] = df['category'].fillna('').astype(str)
@@ -849,6 +901,76 @@ def dashboard_layout():
                                        'padding': '9px', 'backgroundColor': '#e5e7eb', 'color': '#374151'}),
                 ]),
             ]),
+
+            # ── Sale Edit Modal ────────────────────────────────────────────
+            html.Div(id='sale-edit-modal', children=[
+                html.Div(id='sale-edit-modal-inner', children=[
+                    html.H3('\u270f\ufe0f Edit Sale Record',
+                            style={'margin': '0 0 20px', 'fontSize': '1.15em',
+                                   'color': 'var(--text, #1f2937)'}),
+                    html.Div([html.Label('Date (YYYY-MM-DD)', style=LABEL_STYLE),
+                              dcc.Input(id='edit-sale-date', type='text', style=INPUT_STYLE,
+                                        placeholder='YYYY-MM-DD')],
+                             style={'marginBottom': '14px'}),
+                    html.Div([html.Label('Product', style=LABEL_STYLE),
+                              dcc.Input(id='edit-sale-product', type='text', style=INPUT_STYLE)],
+                             style={'marginBottom': '14px'}),
+                    html.Div([html.Label(f'Sales ({CEDI})', style=LABEL_STYLE),
+                              dcc.Input(id='edit-sale-sales', type='number', min=0,
+                                        style=INPUT_STYLE)],
+                             style={'marginBottom': '14px'}),
+                    html.Div([html.Label('Category (optional)', style=LABEL_STYLE),
+                              dcc.Input(id='edit-sale-category', type='text', style=INPUT_STYLE)],
+                             style={'marginBottom': '18px'}),
+                    html.Div(id='edit-sale-msg',
+                             style={'marginBottom': '12px', 'fontSize': '0.88em',
+                                    'color': COLORS['danger']}),
+                    html.Div(style={'display': 'flex', 'gap': '12px'}, children=[
+                        html.Button('\U0001f4be Save', id='edit-sale-save-btn', n_clicks=0,
+                                    style={**BTN_BASE, 'flex': '1', 'padding': '11px',
+                                           'backgroundColor': COLORS['success'], 'color': 'white'}),
+                        html.Button('\u2715 Cancel', id='edit-sale-cancel-btn', n_clicks=0,
+                                    style={**BTN_BASE, 'flex': '1', 'padding': '11px',
+                                           'backgroundColor': '#e5e7eb', 'color': '#374151'}),
+                    ]),
+                ]),
+            ]),
+            dcc.Store(id='sale-edit-store', storage_type='memory', data=None),
+
+            # ── Expense Edit Modal ─────────────────────────────────────────
+            html.Div(id='exp-edit-modal', children=[
+                html.Div(id='exp-edit-modal-inner', children=[
+                    html.H3('\u270f\ufe0f Edit Expense Record',
+                            style={'margin': '0 0 20px', 'fontSize': '1.15em',
+                                   'color': 'var(--text, #1f2937)'}),
+                    html.Div([html.Label('Date (YYYY-MM-DD)', style=LABEL_STYLE),
+                              dcc.Input(id='edit-exp-date', type='text', style=INPUT_STYLE,
+                                        placeholder='YYYY-MM-DD')],
+                             style={'marginBottom': '14px'}),
+                    html.Div([html.Label('Vendor', style=LABEL_STYLE),
+                              dcc.Input(id='edit-exp-vendor', type='text', style=INPUT_STYLE)],
+                             style={'marginBottom': '14px'}),
+                    html.Div([html.Label(f'Amount ({CEDI})', style=LABEL_STYLE),
+                              dcc.Input(id='edit-exp-amount', type='number', min=0,
+                                        style=INPUT_STYLE)],
+                             style={'marginBottom': '14px'}),
+                    html.Div([html.Label('Category (optional)', style=LABEL_STYLE),
+                              dcc.Input(id='edit-exp-category', type='text', style=INPUT_STYLE)],
+                             style={'marginBottom': '18px'}),
+                    html.Div(id='edit-exp-msg',
+                             style={'marginBottom': '12px', 'fontSize': '0.88em',
+                                    'color': COLORS['danger']}),
+                    html.Div(style={'display': 'flex', 'gap': '12px'}, children=[
+                        html.Button('\U0001f4be Save', id='edit-exp-save-btn', n_clicks=0,
+                                    style={**BTN_BASE, 'flex': '1', 'padding': '11px',
+                                           'backgroundColor': COLORS['danger'], 'color': 'white'}),
+                        html.Button('\u2715 Cancel', id='edit-exp-cancel-btn', n_clicks=0,
+                                    style={**BTN_BASE, 'flex': '1', 'padding': '11px',
+                                           'backgroundColor': '#e5e7eb', 'color': '#374151'}),
+                    ]),
+                ]),
+            ]),
+            dcc.Store(id='exp-edit-store', storage_type='memory', data=None),
 
             # ── Main wrapper ──────────────────────────────────────────────────
             html.Div(id='dashboard-wrapper', children=[
@@ -1767,6 +1889,7 @@ def update_dashboard(stored_data, session, theme,
         disp['date']  = disp['date'].dt.strftime('%Y-%m-%d')
         disp['sales'] = disp['sales'].round(2)
         col_map = {'date': 'Date', 'product': 'Product', 'sales': f'Sales ({CEDI})', 'category': 'Category'}
+        visible_cols = [c for c in disp.columns if c != 'id']
         tbl = html.Div(style={'backgroundColor': th['card_bg'], 'borderRadius': '14px',
                               'padding': '22px', 'boxShadow': '0 2px 10px rgba(0,0,0,0.07)',
                               'border': f'1px solid {th["card_border"]}'}, children=[
@@ -1777,12 +1900,25 @@ def update_dashboard(stored_data, session, theme,
                           style={'backgroundColor': COLORS['primary'], 'color': 'white',
                                  'padding': '3px 12px', 'borderRadius': '20px',
                                  'fontSize': '0.8em', 'fontWeight': '600'}),
+                html.Div(className='tbl-actions', children=[
+                    html.Button('\u270f\ufe0f Edit', id='sale-edit-btn', n_clicks=0,
+                                style={**BTN_BASE, 'padding': '6px 14px',
+                                       'backgroundColor': COLORS['primary'], 'color': 'white',
+                                       'fontSize': '0.82em'}),
+                    html.Button('\U0001f5d1\ufe0f Delete', id='sale-delete-btn', n_clicks=0,
+                                style={**BTN_BASE, 'padding': '6px 14px',
+                                       'backgroundColor': COLORS['danger'], 'color': 'white',
+                                       'fontSize': '0.82em'}),
+                    html.Span('Select a row first', id='sale-action-hint',
+                              style={'fontSize': '0.78em', 'color': th['sub_text'],
+                                     'fontStyle': 'italic'}),
+                ]),
             ]),
             dash_table.DataTable(
                 id='data-table', data=disp.to_dict('records'),
-                columns=[{'name': col_map.get(c, c.title()), 'id': c, 'editable': True}
-                         for c in disp.columns],
-                editable=True,
+                columns=[{'name': col_map.get(c, c.title()), 'id': c, 'editable': False}
+                         for c in visible_cols],
+                row_selectable='single', selected_rows=[],
                 page_size=10, sort_action='native', filter_action='native',
                 style_table={'overflowX': 'auto', 'minWidth': '100%'},
                 style_cell={'textAlign': 'left', 'padding': '9px 12px', 'whiteSpace': 'nowrap',
@@ -1802,6 +1938,8 @@ def update_dashboard(stored_data, session, theme,
                 style_data_conditional=[
                     {'if': {'row_index': 'odd'}, 'backgroundColor': th['plot_bg']},
                     {'if': {'column_id': 'sales'}, 'textAlign': 'right', 'fontWeight': '600'},
+                    {'if': {'state': 'selected'}, 'backgroundColor': 'rgba(102,126,234,0.15)',
+                     'border': f'1px solid {COLORS["primary"]}'},
                 ],
                 tooltip_delay=0,
                 tooltip_duration=None,
@@ -2386,6 +2524,7 @@ def update_expense_dashboard(session, theme, start_date, end_date,
         disp['date']   = disp['date'].dt.strftime('%Y-%m-%d')
         disp['amount'] = disp['amount'].round(2)
         col_map = {'date':'Date','vendor':'Vendor','amount':f'Amount ({CEDI})','category':'Category'}
+        visible_cols = [c for c in disp.columns if c != 'id']
         tbl = html.Div(style={'backgroundColor': th['card_bg'], 'borderRadius': '14px',
                               'padding': '22px', 'boxShadow': '0 2px 10px rgba(0,0,0,0.07)',
                               'border': f'1px solid {th["card_border"]}'}, children=[
@@ -2396,12 +2535,26 @@ def update_expense_dashboard(session, theme, start_date, end_date,
                           style={'backgroundColor': COLORS['danger'], 'color': 'white',
                                  'padding': '3px 12px', 'borderRadius': '20px',
                                  'fontSize': '0.8em', 'fontWeight': '600'}),
+                html.Div(className='tbl-actions', children=[
+                    html.Button('\u270f\ufe0f Edit', id='exp-edit-btn', n_clicks=0,
+                                style={**BTN_BASE, 'padding': '6px 14px',
+                                       'backgroundColor': COLORS['warning'], 'color': 'white',
+                                       'fontSize': '0.82em'}),
+                    html.Button('\U0001f5d1\ufe0f Delete', id='exp-delete-btn', n_clicks=0,
+                                style={**BTN_BASE, 'padding': '6px 14px',
+                                       'backgroundColor': COLORS['danger'], 'color': 'white',
+                                       'fontSize': '0.82em'}),
+                    html.Span('Select a row first', id='exp-action-hint',
+                              style={'fontSize': '0.78em', 'color': th['sub_text'],
+                                     'fontStyle': 'italic'}),
+                ]),
             ]),
             dash_table.DataTable(
                 id='exp-data-table', data=disp.to_dict('records'),
-                columns=[{'name': col_map.get(c, c.title()), 'id': c, 'editable': True}
-                         for c in disp.columns],
-                editable=True, page_size=10, sort_action='native', filter_action='native',
+                columns=[{'name': col_map.get(c, c.title()), 'id': c, 'editable': False}
+                         for c in visible_cols],
+                row_selectable='single', selected_rows=[],
+                page_size=10, sort_action='native', filter_action='native',
                 style_table={'overflowX': 'auto', 'minWidth': '100%'},
                 style_cell={'textAlign': 'left', 'padding': '9px 12px', 'whiteSpace': 'nowrap',
                             'fontFamily': "'Segoe UI', Tahoma, Geneva, Verdana, sans-serif",
@@ -2417,6 +2570,8 @@ def update_expense_dashboard(session, theme, start_date, end_date,
                 style_data_conditional=[
                     {'if': {'row_index': 'odd'}, 'backgroundColor': th['plot_bg']},
                     {'if': {'column_id': 'amount'}, 'textAlign': 'right', 'fontWeight': '600'},
+                    {'if': {'state': 'selected'}, 'backgroundColor': 'rgba(239,68,68,0.12)',
+                     'border': f'1px solid {COLORS["danger"]}'},
                 ],
                 tooltip_delay=0, tooltip_duration=None,
             ),
@@ -2612,6 +2767,176 @@ Reply ONLY with this JSON — no markdown, no extra text, keep each value under 
         return ('', '', '', '', '', '',
                 hidden, hidden, {'display':'block'},
                 f'AI error: {str(e)}', err_show)
+
+
+# ── Sale record edit / delete callbacks ────────────────────────────────────────
+
+MODAL_OPEN  = {'display': 'flex', 'position': 'fixed', 'inset': '0',
+               'background': 'rgba(0,0,0,0.55)', 'zIndex': '30000',
+               'alignItems': 'center', 'justifyContent': 'center'}
+MODAL_CLOSE = {'display': 'none'}
+
+@app.callback(
+    Output('sale-edit-modal',    'style'),
+    Output('edit-sale-date',     'value'),
+    Output('edit-sale-product',  'value'),
+    Output('edit-sale-sales',    'value'),
+    Output('edit-sale-category', 'value'),
+    Output('sale-edit-store',    'data'),
+    Output('edit-sale-msg',      'children'),
+    Input('sale-edit-btn',       'n_clicks'),
+    Input('edit-sale-cancel-btn','n_clicks'),
+    State('data-table',          'selected_rows'),
+    State('data-table',          'data'),
+    prevent_initial_call=True,
+)
+def open_sale_edit_modal(edit_n, cancel_n, selected_rows, table_data):
+    tid = ctx.triggered_id
+    if tid == 'edit-sale-cancel-btn':
+        return MODAL_CLOSE, no_update, no_update, no_update, no_update, no_update, ''
+    if tid == 'sale-edit-btn':
+        if not selected_rows or not table_data:
+            raise PreventUpdate
+        row = table_data[selected_rows[0]]
+        return (MODAL_OPEN, row.get('date', ''), row.get('product', ''),
+                row.get('sales', ''), row.get('category', ''),
+                row.get('id'), '')
+    raise PreventUpdate
+
+@app.callback(
+    Output('stored-data',       'data',  allow_duplicate=True),
+    Output('sale-edit-modal',   'style', allow_duplicate=True),
+    Output('edit-sale-msg',     'children', allow_duplicate=True),
+    Input('edit-sale-save-btn', 'n_clicks'),
+    State('edit-sale-date',     'value'),
+    State('edit-sale-product',  'value'),
+    State('edit-sale-sales',    'value'),
+    State('edit-sale-category', 'value'),
+    State('sale-edit-store',    'data'),
+    State('session-store',      'data'),
+    prevent_initial_call=True,
+)
+def save_sale_edit(n_clicks, date, product, sales, category, record_id, session):
+    if not n_clicks:
+        raise PreventUpdate
+    if not record_id:
+        return no_update, no_update, '\u274c No record selected.'
+    if not date or not product or not str(product).strip() or sales is None:
+        return no_update, no_update, '\u274c Fill in Date, Product and Sales.'
+    try:
+        pd.to_datetime(date)
+    except Exception:
+        return no_update, no_update, '\u274c Invalid date. Use YYYY-MM-DD.'
+    updates = {
+        'date':     str(date),
+        'product':  str(product).strip(),
+        'sales':    float(sales),
+        'category': str(category).strip() if category else '',
+    }
+    update_sales_record(str(record_id), updates)
+    user_id = (session or {}).get('user_id')
+    refreshed = load_user_data(user_id) if user_id else []
+    return refreshed, MODAL_CLOSE, ''
+
+@app.callback(
+    Output('stored-data',    'data', allow_duplicate=True),
+    Input('sale-delete-btn', 'n_clicks'),
+    State('data-table',      'selected_rows'),
+    State('data-table',      'data'),
+    State('session-store',   'data'),
+    prevent_initial_call=True,
+)
+def delete_sale_record(n_clicks, selected_rows, table_data, session):
+    if not n_clicks or not selected_rows or not table_data:
+        raise PreventUpdate
+    row = table_data[selected_rows[0]]
+    record_id = row.get('id')
+    if not record_id:
+        raise PreventUpdate
+    delete_sales_record(str(record_id))
+    user_id = (session or {}).get('user_id')
+    return load_user_data(user_id) if user_id else []
+
+
+# ── Expense record edit / delete callbacks ─────────────────────────────────────
+
+@app.callback(
+    Output('exp-edit-modal',     'style'),
+    Output('edit-exp-date',      'value'),
+    Output('edit-exp-vendor',    'value'),
+    Output('edit-exp-amount',    'value'),
+    Output('edit-exp-category',  'value'),
+    Output('exp-edit-store',     'data'),
+    Output('edit-exp-msg',       'children'),
+    Input('exp-edit-btn',        'n_clicks'),
+    Input('edit-exp-cancel-btn', 'n_clicks'),
+    State('exp-data-table',      'selected_rows'),
+    State('exp-data-table',      'data'),
+    prevent_initial_call=True,
+)
+def open_exp_edit_modal(edit_n, cancel_n, selected_rows, table_data):
+    tid = ctx.triggered_id
+    if tid == 'edit-exp-cancel-btn':
+        return MODAL_CLOSE, no_update, no_update, no_update, no_update, no_update, ''
+    if tid == 'exp-edit-btn':
+        if not selected_rows or not table_data:
+            raise PreventUpdate
+        row = table_data[selected_rows[0]]
+        return (MODAL_OPEN, row.get('date', ''), row.get('vendor', ''),
+                row.get('amount', ''), row.get('category', ''),
+                row.get('id'), '')
+    raise PreventUpdate
+
+@app.callback(
+    Output('exp-refresh',       'data', allow_duplicate=True),
+    Output('exp-edit-modal',    'style', allow_duplicate=True),
+    Output('edit-exp-msg',      'children', allow_duplicate=True),
+    Input('edit-exp-save-btn',  'n_clicks'),
+    State('edit-exp-date',      'value'),
+    State('edit-exp-vendor',    'value'),
+    State('edit-exp-amount',    'value'),
+    State('edit-exp-category',  'value'),
+    State('exp-edit-store',     'data'),
+    State('exp-refresh',        'data'),
+    prevent_initial_call=True,
+)
+def save_exp_edit(n_clicks, date, vendor, amount, category, record_id, refresh_val):
+    if not n_clicks:
+        raise PreventUpdate
+    if not record_id:
+        return no_update, no_update, '\u274c No record selected.'
+    if not date or not vendor or not str(vendor).strip() or amount is None:
+        return no_update, no_update, '\u274c Fill in Date, Vendor and Amount.'
+    try:
+        pd.to_datetime(date)
+    except Exception:
+        return no_update, no_update, '\u274c Invalid date. Use YYYY-MM-DD.'
+    updates = {
+        'date':     str(date),
+        'vendor':   str(vendor).strip(),
+        'amount':   float(amount),
+        'category': str(category).strip() if category else '',
+    }
+    update_expense_record(str(record_id), updates)
+    return (refresh_val or 0) + 1, MODAL_CLOSE, ''
+
+@app.callback(
+    Output('exp-refresh',    'data', allow_duplicate=True),
+    Input('exp-delete-btn',  'n_clicks'),
+    State('exp-data-table',  'selected_rows'),
+    State('exp-data-table',  'data'),
+    State('exp-refresh',     'data'),
+    prevent_initial_call=True,
+)
+def delete_exp_record(n_clicks, selected_rows, table_data, refresh_val):
+    if not n_clicks or not selected_rows or not table_data:
+        raise PreventUpdate
+    row = table_data[selected_rows[0]]
+    record_id = row.get('id')
+    if not record_id:
+        raise PreventUpdate
+    delete_expense_record(str(record_id))
+    return (refresh_val or 0) + 1
 
 
 if __name__ == '__main__':
