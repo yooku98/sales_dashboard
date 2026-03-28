@@ -37,10 +37,10 @@ server = app.server
 
 # ── Design tokens ──────────────────────────────────────────────────────────────
 COLORS = {
-    'primary':   '#5b5ef4', 'secondary': '#4c1d95',
+    'primary':   '#3B82F6', 'secondary': '#1E293B',
     'success':   '#10b981', 'warning':   '#f59e0b',
     'danger':    '#ef4444', 'light':     '#f3f4f6',
-    'dark':      '#1e1b4b', 'white':     '#ffffff',
+    'dark':      '#0F172A', 'white':     '#ffffff',
 }
 CHART_H = 320
 BTN_BASE = {
@@ -74,17 +74,20 @@ AUTH_CARD = {
 
 CSS = f"""
 <style>
+@import url('https://fonts.googleapis.com/css2?family=Sora:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap');
+
 /* ── YookuInc Analytics — Business Dashboard ── */
 *, *::before, *::after {{ box-sizing: border-box; }}
 body {{ margin: 0; padding: 0; -webkit-text-size-adjust: 100%; overflow-x: hidden;
-       font-family: 'Segoe UI', system-ui, -apple-system, sans-serif; }}
-* {{ transition: background-color 0.2s, color 0.2s, border-color 0.2s; }}
+       font-family: 'Sora', 'Segoe UI', system-ui, -apple-system, sans-serif; }}
+* {{ transition: background-color 0.3s, color 0.3s, border-color 0.3s; }}
 
 /* ── Header ── */
 #app-header {{
   padding: 16px 24px 0;
-  background: linear-gradient(135deg, #1e1b4b 0%, #312e81 40%, #4c1d95 100%) !important;
-  box-shadow: 0 2px 24px rgba(0,0,0,0.35) !important;
+  background: linear-gradient(135deg, #0F172A 0%, #1E293B 50%, #1e3a5f 100%) !important;
+  box-shadow: 0 2px 32px rgba(59,130,246,0.18) !important;
+  border-bottom: 1px solid #334155 !important;
 }}
 @media (max-width: 500px) {{
   #app-header {{ padding: 12px 14px 0; }}
@@ -111,23 +114,23 @@ body {{ margin: 0; padding: 0; -webkit-text-size-adjust: 100%; overflow-x: hidde
   #charts-row-bottom {{ grid-template-columns: 1fr; }}
 }}
 .chart-card {{
-  background: var(--card-bg, white);
-  border: 1px solid var(--card-border, #e5e7eb);
+  background: var(--card-bg, #1E293B);
+  border: 1px solid var(--card-border, #334155);
   border-radius: 16px; padding: 20px 20px 12px;
-  box-shadow: 0 4px 16px rgba(0,0,0,0.08); min-width: 0;
-  transition: background 0.2s, box-shadow 0.2s;
+  box-shadow: 0 4px 20px rgba(0,0,0,0.25); min-width: 0;
+  transition: background 0.3s, box-shadow 0.3s, transform 0.3s;
 }}
-.chart-card:hover {{ box-shadow: 0 6px 24px rgba(0,0,0,0.12); }}
+.chart-card:hover {{ box-shadow: 0 8px 32px rgba(59,130,246,0.15); transform: translateY(-2px); }}
 .graph-wrap {{ width: 100%; height: {CHART_H}px; position: relative; }}
 .graph-wrap .js-plotly-plot,
 .graph-wrap .plot-container,
 .graph-wrap .svg-container {{ width: 100% !important; height: 100% !important; }}
 .input-card {{
-  background: var(--card-bg, white);
-  border: 1px solid var(--card-border, #e5e7eb);
+  background: var(--card-bg, #1E293B);
+  border: 1px solid var(--card-border, #334155);
   border-radius: 16px; padding: 22px 24px;
-  box-shadow: 0 4px 16px rgba(0,0,0,0.07); margin-bottom: 18px;
-  transition: background 0.2s;
+  box-shadow: 0 4px 20px rgba(0,0,0,0.2); margin-bottom: 18px;
+  transition: background 0.3s;
 }}
 #manual-form-grid {{
   display: grid;
@@ -143,16 +146,23 @@ body {{ margin: 0; padding: 0; -webkit-text-size-adjust: 100%; overflow-x: hidde
 }}
 .tab-row {{
   display: flex; gap: 10px; margin-bottom: 20px;
-  border-bottom: 2px solid #e5e7eb; padding-bottom: 12px;
+  border-bottom: 2px solid var(--card-border, #334155); padding-bottom: 12px;
 }}
 .stat-card {{
-  background: var(--card-bg, white);
-  border: 1px solid var(--card-border, #e5e7eb);
+  background: var(--card-bg, #1E293B);
+  border: 1px solid var(--card-border, #334155);
   border-radius: 14px; padding: 20px;
-  box-shadow: 0 4px 14px rgba(0,0,0,0.08); min-width: 0;
-  transition: background 0.2s, transform 0.15s, box-shadow 0.15s;
+  box-shadow: 0 4px 16px rgba(0,0,0,0.2); min-width: 0;
+  transition: background 0.3s, transform 0.3s, box-shadow 0.3s;
+  position: relative; overflow: hidden;
 }}
-.stat-card:hover {{ transform: translateY(-2px); box-shadow: 0 8px 24px rgba(0,0,0,0.12); }}
+.stat-card::before {{
+  content: ''; position: absolute; top: 0; left: 0;
+  width: 4px; height: 100%;
+  background: linear-gradient(180deg, #3B82F6, #8B5CF6);
+  border-radius: 14px 0 0 14px;
+}}
+.stat-card:hover {{ transform: translateY(-3px); box-shadow: 0 10px 30px rgba(59,130,246,0.2); }}
 @media (max-width: 500px) {{
   .stat-card {{ padding: 14px; }}
   .stat-val  {{ font-size: 1.35em !important; }}
@@ -169,10 +179,10 @@ body {{ margin: 0; padding: 0; -webkit-text-size-adjust: 100%; overflow-x: hidde
 
 /* Filter bar */
 #filter-bar {{
-  background: var(--card-bg, white);
-  border: 1px solid var(--card-border, #e5e7eb);
+  background: var(--card-bg, #1E293B);
+  border: 1px solid var(--card-border, #334155);
   border-radius: 14px; padding: 18px 20px;
-  box-shadow: 0 2px 10px rgba(0,0,0,0.08); margin-bottom: 18px;
+  box-shadow: 0 2px 12px rgba(0,0,0,0.2); margin-bottom: 18px;
   display: flex; flex-wrap: wrap; gap: 16px; align-items: flex-end;
 }}
 #filter-bar > div {{ flex: 1; min-width: 160px; }}
@@ -180,49 +190,50 @@ body {{ margin: 0; padding: 0; -webkit-text-size-adjust: 100%; overflow-x: hidde
 
 /* Target card */
 #target-card {{
-  background: var(--card-bg, white);
-  border: 1px solid var(--card-border, #e5e7eb);
+  background: var(--card-bg, #1E293B);
+  border: 1px solid var(--card-border, #334155);
   border-radius: 14px; padding: 20px 24px;
-  box-shadow: 0 2px 10px rgba(0,0,0,0.08); margin-bottom: 18px;
+  box-shadow: 0 2px 12px rgba(0,0,0,0.2); margin-bottom: 18px;
 }}
 
 /* Progress bar */
 .progress-outer {{
   height: 10px; border-radius: 5px;
-  background: var(--card-border, #e5e7eb);
+  background: var(--card-border, #334155);
   overflow: hidden; margin: 10px 0 4px;
 }}
 .progress-inner {{
   height: 100%; border-radius: 5px;
   transition: width 0.6s ease;
+  background: linear-gradient(90deg, #3B82F6, #8B5CF6);
 }}
 
 /* Trend badge */
 .trend-up   {{ color: #10b981; font-size: 0.78em; font-weight: 700; margin-top: 3px; }}
 .trend-down {{ color: #ef4444; font-size: 0.78em; font-weight: 700; margin-top: 3px; }}
-.trend-flat {{ color: #9ca3af; font-size: 0.78em; font-weight: 700; margin-top: 3px; }}
+.trend-flat {{ color: #94A3B8; font-size: 0.78em; font-weight: 700; margin-top: 3px; }}
 
 /* ── Dashboard form inputs — fully themed ── */
 #dashboard-wrapper input[type=text],
 #dashboard-wrapper input[type=number] {{
-  background: var(--input-bg, white) !important;
-  color: var(--input-text, #1f2937) !important;
-  border-color: var(--input-border, #e5e7eb) !important;
+  background: var(--input-bg, #0F172A) !important;
+  color: var(--input-text, #E2E8F0) !important;
+  border-color: var(--input-border, #334155) !important;
 }}
 #dashboard-wrapper .DateInput_input {{
-  background: var(--input-bg, white) !important;
-  color: var(--input-text, #1f2937) !important;
+  background: var(--input-bg, #0F172A) !important;
+  color: var(--input-text, #E2E8F0) !important;
   border: none !important;
   font-size: 0.95em !important;
   padding: 8px 10px !important;
 }}
 #dashboard-wrapper .DateInput {{
-  background: var(--input-bg, white) !important;
+  background: var(--input-bg, #0F172A) !important;
   width: 100% !important;
 }}
 #dashboard-wrapper .SingleDatePickerInput {{
-  background: var(--input-bg, white) !important;
-  border: 2px solid var(--input-border, #e5e7eb) !important;
+  background: var(--input-bg, #0F172A) !important;
+  border: 2px solid var(--input-border, #334155) !important;
   border-radius: 8px !important;
   width: 100% !important;
   display: flex !important;
@@ -232,42 +243,42 @@ body {{ margin: 0; padding: 0; -webkit-text-size-adjust: 100%; overflow-x: hidde
 #dashboard-wrapper .CalendarMonth,
 #dashboard-wrapper .CalendarMonth_caption,
 #dashboard-wrapper .CalendarMonthGrid {{
-  background: var(--card-bg, white) !important;
-  color: var(--text, #1f2937) !important;
+  background: var(--card-bg, #1E293B) !important;
+  color: var(--text, #E2E8F0) !important;
 }}
 #dashboard-wrapper .CalendarDay__default {{
-  background: var(--card-bg, white) !important;
-  color: var(--text, #1f2937) !important;
-  border-color: var(--input-border, #e5e7eb) !important;
+  background: var(--card-bg, #1E293B) !important;
+  color: var(--text, #E2E8F0) !important;
+  border-color: var(--input-border, #334155) !important;
 }}
 #dashboard-wrapper .CalendarDay__selected {{
-  background: #667eea !important;
+  background: #3B82F6 !important;
   color: white !important;
 }}
 /* Upload drop zone */
 #upload-data, #upload-data > div {{
-  border-color: var(--input-border, #667eea) !important;
-  background: var(--input-bg, #f9fafb) !important;
-  color: var(--text, #1f2937) !important;
+  border-color: var(--input-border, #3B82F6) !important;
+  background: var(--input-bg, #0F172A) !important;
+  color: var(--text, #E2E8F0) !important;
 }}
 /* Tab row border */
 .tab-row {{
-  border-bottom-color: var(--input-border, #e5e7eb) !important;
+  border-bottom-color: var(--input-border, #334155) !important;
 }}
 /* DataTable filter row */
 .dash-filter input {{
-  background: var(--input-bg, white) !important;
-  color: var(--input-text, #1f2937) !important;
-  border: 1px solid var(--input-border, #e5e7eb) !important;
+  background: var(--input-bg, #0F172A) !important;
+  color: var(--input-text, #E2E8F0) !important;
+  border: 1px solid var(--input-border, #334155) !important;
   border-radius: 4px !important;
   padding: 4px 8px !important;
 }}
 .dash-filter {{
-  background: var(--input-bg, white) !important;
+  background: var(--input-bg, #0F172A) !important;
 }}
 /* Chart card text */
 .chart-card h3, .chart-card p {{
-  color: var(--text, #1f2937) !important;
+  color: var(--text, #E2E8F0) !important;
 }}
 
 /* ── Kill iOS/Chrome autofill yellow background ── */
@@ -275,9 +286,9 @@ input:-webkit-autofill,
 input:-webkit-autofill:hover,
 input:-webkit-autofill:focus,
 input:-webkit-autofill:active {{
-  -webkit-box-shadow: 0 0 0 40px white inset !important;
-  -webkit-text-fill-color: #1f2937 !important;
-  caret-color: #1f2937;
+  -webkit-box-shadow: 0 0 0 40px #1E293B inset !important;
+  -webkit-text-fill-color: #E2E8F0 !important;
+  caret-color: #E2E8F0;
   transition: background-color 9999s ease-in-out 0s;
 }}
 
@@ -288,12 +299,12 @@ input#signup-email, input#signup-password {{
   width: 100% !important;
   padding: 16px 14px !important;
   margin: 0 0 16px 0 !important;
-  border: 1.5px solid #d1d5db !important;
+  border: 1.5px solid #334155 !important;
   border-radius: 8px !important;
   font-size: 16px !important;
-  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif !important;
-  color: #1f2937 !important;
-  background: white !important;
+  font-family: 'Sora', 'Segoe UI', sans-serif !important;
+  color: #E2E8F0 !important;
+  background: #0F172A !important;
   box-sizing: border-box !important;
   outline: none !important;
   -webkit-appearance: none;
@@ -303,8 +314,8 @@ input#signup-email, input#signup-password {{
 }}
 input#login-email:focus, input#login-password:focus,
 input#signup-email:focus, input#signup-password:focus {{
-  border-color: #667eea !important;
-  box-shadow: 0 0 0 3px rgba(102,126,234,0.15) !important;
+  border-color: #3B82F6 !important;
+  box-shadow: 0 0 0 3px rgba(59,130,246,0.15) !important;
 }}
 
 /* ── Auth buttons ── */
@@ -320,24 +331,34 @@ input#signup-email:focus, input#signup-password:focus {{
   -webkit-appearance: none;
   appearance: none;
   min-height: 52px !important;
+  background: linear-gradient(135deg, #3B82F6, #2563EB) !important;
+  color: white !important;
+  font-family: 'Sora', sans-serif !important;
+  letter-spacing: 0.02em;
+  transition: all 0.3s !important;
+}}
+#login-btn:hover, #signup-btn:hover {{
+  transform: translateY(-1px);
+  box-shadow: 0 8px 20px rgba(59,130,246,0.35) !important;
 }}
 
 /* Export modal overlay */
 #export-modal {{
   display: none;
   position: fixed; inset: 0;
-  background: rgba(0,0,0,0.55);
+  background: rgba(0,0,0,0.65);
   z-index: 10000;
   align-items: center; justify-content: center;
 }}
 #export-modal.open {{ display: flex; }}
 #export-modal-inner {{
-  background: var(--card-bg, white);
+  background: var(--card-bg, #1E293B);
+  border: 1px solid #334155;
   border-radius: 16px;
   padding: 28px 32px;
   width: 340px; max-width: 92vw;
-  box-shadow: 0 8px 40px rgba(0,0,0,0.3);
-  color: var(--text, #1f2937);
+  box-shadow: 0 8px 40px rgba(59,130,246,0.2);
+  color: var(--text, #E2E8F0);
 }}
 
 /* ── Main section tabs ── */
@@ -346,13 +367,15 @@ input#signup-email:focus, input#signup-password:focus {{
 }}
 .main-tabs .tab-btn {{
   padding: 10px 24px; border: none; cursor: pointer;
-  font-size: 0.87em; font-weight: 700; transition: all 0.18s;
-  background: rgba(255,255,255,0.10); color: rgba(255,255,255,0.65);
-  border-radius: 10px 10px 0 0; letter-spacing: 0.02em;
+  font-size: 0.87em; font-weight: 700; transition: all 0.3s;
+  background: rgba(59,130,246,0.08); color: #94A3B8;
+  border-radius: 10px 10px 0 0; letter-spacing: 0.03em;
+  font-family: 'Sora', sans-serif;
 }}
-.main-tabs .tab-btn:hover {{ background: rgba(255,255,255,0.18); color: white; }}
+.main-tabs .tab-btn:hover {{ background: rgba(59,130,246,0.18); color: #E2E8F0; }}
 .main-tabs .tab-btn.active {{
-  background: var(--page-bg, #f3f4f6); color: #4c1d95; font-weight: 800;
+  background: var(--page-bg, #f3f4f6); color: #3B82F6; font-weight: 800;
+  box-shadow: 0 -2px 12px rgba(59,130,246,0.15);
 }}
 .tab-panel {{ visibility: hidden; height: 0; overflow: hidden; }}
 .tab-panel.active {{ visibility: visible; height: auto; overflow: visible; }}
@@ -379,9 +402,9 @@ input#signup-email:focus, input#signup-password:focus {{
 @media (max-width: 800px) {{ #exp-manual-form-grid {{ grid-template-columns: minmax(0,1fr) minmax(0,1fr); }} }}
 @media (max-width: 420px) {{ #exp-manual-form-grid {{ grid-template-columns: 1fr; }} }}
 #exp-filter-bar {{
-  background: var(--card-bg,white); border: 1px solid var(--card-border,#e5e7eb);
+  background: var(--card-bg, #1E293B); border: 1px solid var(--card-border, #334155);
   border-radius: 14px; padding: 18px 20px;
-  box-shadow: 0 2px 10px rgba(0,0,0,0.08); margin-bottom: 18px;
+  box-shadow: 0 2px 12px rgba(0,0,0,0.2); margin-bottom: 18px;
   display: flex; flex-wrap: wrap; gap: 16px; align-items: flex-end;
 }}
 #exp-filter-bar > div {{ flex: 1; min-width: 160px; }}
@@ -391,30 +414,33 @@ input#signup-email:focus, input#signup-password:focus {{
   max-width: 1400px; margin: 0 auto; padding: 20px 20px 40px;
 }}
 .ai-card {{
-  background: var(--card-bg, white);
-  border: 1px solid var(--card-border, #e5e7eb);
+  background: var(--card-bg, #1E293B);
+  border: 1px solid var(--card-border, #334155);
   border-radius: 14px; padding: 24px 28px;
-  box-shadow: 0 2px 10px rgba(0,0,0,0.10);
+  box-shadow: 0 2px 12px rgba(0,0,0,0.2);
   margin-bottom: 18px;
 }}
 .ai-insights-text {{
   font-size: 0.97em; line-height: 1.8;
-  color: var(--text, #1f2937);
+  color: var(--text, #E2E8F0);
   white-space: pre-wrap; word-break: break-word;
+  font-family: 'JetBrains Mono', monospace;
 }}
 .ai-section-header {{
   font-size: 1.15em; font-weight: 700;
-  color: var(--text, #1f2937); margin: 0 0 10px;
+  color: var(--text, #E2E8F0); margin: 0 0 10px;
 }}
 .ai-badge {{
   display: inline-block; padding: 3px 12px; border-radius: 20px;
   font-size: 0.78em; font-weight: 700; margin-right: 6px;
   vertical-align: middle;
+  background: rgba(59,130,246,0.12); color: #3B82F6;
+  border: 1px solid rgba(59,130,246,0.25);
 }}
 #exp-budget-card {{
-  background: var(--card-bg,white); border: 1px solid var(--card-border,#e5e7eb);
+  background: var(--card-bg, #1E293B); border: 1px solid var(--card-border, #334155);
   border-radius: 14px; padding: 20px 24px;
-  box-shadow: 0 2px 10px rgba(0,0,0,0.08); margin-bottom: 18px;
+  box-shadow: 0 2px 12px rgba(0,0,0,0.2); margin-bottom: 18px;
 }}
 
 /* ── Mobile date input native styling ── */
@@ -424,6 +450,7 @@ input[type=date] {{
 }}
 input[type=date]::-webkit-calendar-picker-indicator {{
   opacity: 0.6; cursor: pointer; padding: 2px;
+  filter: invert(0.7);
 }}
 
 /* ── Fix dropdown / datepicker overlap ── */
@@ -434,47 +461,62 @@ input[type=date]::-webkit-calendar-picker-indicator {{
 /* ── YookuInc footer branding ── */
 .yooku-footer {{
   text-align: center; padding: 16px 0 28px;
-  font-size: 0.78em; color: var(--sub-text, #9ca3af);
-  border-top: 1px solid var(--card-border, #e5e7eb);
+  font-size: 0.78em; color: var(--sub-text, #94A3B8);
+  border-top: 1px solid var(--card-border, #334155);
   margin-top: 8px;
 }}
-.yooku-footer a {{ color: #667eea; text-decoration: none; font-weight: 600; }}
-.yooku-footer a:hover {{ text-decoration: underline; }}
+.yooku-footer a {{ color: #3B82F6; text-decoration: none; font-weight: 600; }}
+.yooku-footer a:hover {{ color: #60a5fa; text-decoration: underline; }}
 .yooku-brand-badge {{
   display: inline-flex; align-items: center; gap: 6px;
-  background: linear-gradient(135deg, #1e1b4b, #4c1d95);
-  color: white; padding: 3px 12px; border-radius: 20px;
+  background: linear-gradient(135deg, #0F172A, #1E293B);
+  border: 1px solid #3B82F6;
+  color: #3B82F6; padding: 4px 14px; border-radius: 20px;
   font-size: 0.78em; font-weight: 700; margin-top: 6px;
-  letter-spacing: 0.04em;
+  letter-spacing: 0.06em; font-family: 'Sora', sans-serif;
+  box-shadow: 0 0 12px rgba(59,130,246,0.2);
 }}
 
 /* ── Edit record modal ── */
 #sale-edit-modal, #exp-edit-modal {{
   display: none; position: fixed; inset: 0;
-  background: rgba(0,0,0,0.55); z-index: 30000;
+  background: rgba(0,0,0,0.65); z-index: 30000;
   align-items: center; justify-content: center;
 }}
 #sale-edit-modal.open, #exp-edit-modal.open {{ display: flex; }}
 #sale-edit-modal-inner, #exp-edit-modal-inner {{
-  background: var(--card-bg, white); border-radius: 16px;
+  background: var(--card-bg, #1E293B);
+  border: 1px solid #334155;
+  border-radius: 16px;
   padding: 28px 32px; width: 420px; max-width: 92vw;
-  box-shadow: 0 8px 40px rgba(0,0,0,0.3); color: var(--text, #1f2937);
+  box-shadow: 0 8px 40px rgba(59,130,246,0.2);
+  color: var(--text, #E2E8F0);
 }}
 #sale-edit-modal-inner input, #exp-edit-modal-inner input {{
-  background: var(--input-bg, white) !important;
-  color: var(--input-text, #1f2937) !important;
-  border-color: var(--input-border, #e5e7eb) !important;
+  background: var(--input-bg, #0F172A) !important;
+  color: var(--input-text, #E2E8F0) !important;
+  border-color: var(--input-border, #334155) !important;
 }}
 
 /* ── Row action buttons in table header ── */
 .tbl-actions {{ display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }}
 .tbl-hdr {{ flex-wrap: wrap; gap: 10px; }}
+
+/* ── YookuInc pill badge component ── */
+.yooku-pill {{
+  display: inline-flex; align-items: center; gap: 4px;
+  padding: 2px 10px; border-radius: 50px;
+  font-size: 0.72em; font-weight: 600;
+  background: rgba(59,130,246,0.1);
+  color: #3B82F6; border: 1px solid rgba(59,130,246,0.25);
+  letter-spacing: 0.04em;
+}}
 </style>
 """
 
 PWA_TAGS = (
     '<link rel="manifest" href="/assets/manifest.json">\n'
-    '<meta name="theme-color" content="#667eea">\n'
+    '<meta name="theme-color" content="#0F172A">\n'
     '<meta name="apple-mobile-web-app-capable" content="yes">\n'
     '<meta name="apple-mobile-web-app-status-bar-style" content="default">\n'
     '<meta name="apple-mobile-web-app-title" content="Sales Dashboard">\n'
@@ -502,7 +544,7 @@ window.exportDashboard = function(format) {
         var ctx2 = canvas.getContext('2d');
         ctx2.save();
         ctx2.globalAlpha = 0.18;
-        ctx2.fillStyle = '#667eea';
+        ctx2.fillStyle = '#3B82F6';
         ctx2.font = 'bold ' + Math.round(canvas.width / 28) + 'px Segoe UI, Arial, sans-serif';
         ctx2.textAlign = 'center';
         ctx2.textBaseline = 'middle';
@@ -743,8 +785,8 @@ THEME = {
         'paper_bg':  '#0f172a',
         'grid':      'rgba(255,255,255,0.08)',
         'grid_dash': 'dash',
-        'line':      '#667eea',
-        'fill':      'rgba(102,126,234,0.18)',
+        'line':      '#3B82F6',
+        'fill':      'rgba(59,130,246,0.18)',
         'tick':      '#94a3b8',
         'axis_line': 'rgba(255,255,255,0.1)',
         'anno':      '#64748b',
@@ -766,8 +808,8 @@ THEME = {
         'paper_bg':  'white',
         'grid':      '#e5e7eb',
         'grid_dash': 'solid',
-        'line':      '#5b5ef4',
-        'fill':      'rgba(91,94,244,0.07)',
+        'line':      '#3B82F6',
+        'fill':      'rgba(59,130,246,0.07)',
         'tick':      '#6b7280',
         'axis_line': '#e5e7eb',
         'anno':      '#9ca3af',
@@ -1411,7 +1453,7 @@ def dashboard_layout():
                 html.Div(id='ai-insights-panel', children=[
 
                     # Header card
-                    html.Div(className='ai-card', style={'borderTop': '4px solid #667eea'}, children=[
+                    html.Div(className='ai-card', style={'borderTop': '4px solid #3B82F6'}, children=[
                         html.Div(style={'display':'flex','justifyContent':'space-between',
                                         'alignItems':'center','flexWrap':'wrap','gap':'12px'}, children=[
                             html.Div([
@@ -1424,7 +1466,7 @@ def dashboard_layout():
                             ]),
                             html.Button('\u27f3 Generate Insights', id='ai-generate-btn', n_clicks=0,
                                         style={**BTN_BASE, 'padding':'10px 22px',
-                                               'backgroundColor':'#667eea','color':'white',
+                                               'backgroundColor':'#3B82F6','color':'white',
                                                'fontSize':'0.9em'}),
                         ]),
                         html.Div(id='ai-error-msg', style={'display':'none'}),
@@ -1438,13 +1480,13 @@ def dashboard_layout():
                                         'marginBottom':'12px','fontWeight':'600'}),
                         html.Div(style={'display':'flex','justifyContent':'center','gap':'6px'}, children=[
                             html.Div(style={'width':'10px','height':'10px','borderRadius':'50%',
-                                           'backgroundColor':'#667eea',
+                                           'backgroundColor':'#3B82F6',
                                            'animation':'pulse 1.2s ease-in-out infinite'}),
                             html.Div(style={'width':'10px','height':'10px','borderRadius':'50%',
                                            'backgroundColor':'#764ba2',
                                            'animation':'pulse 1.2s ease-in-out 0.4s infinite'}),
                             html.Div(style={'width':'10px','height':'10px','borderRadius':'50%',
-                                           'backgroundColor':'#667eea',
+                                           'backgroundColor':'#3B82F6',
                                            'animation':'pulse 1.2s ease-in-out 0.8s infinite'}),
                         ]),
                     ]),
@@ -2113,7 +2155,7 @@ def _donut_chart(data, t='light'):
         textinfo='percent',
         hovertemplate=f'%{{label}}<br>{CEDI}%{{value:,.0f}}<br>%{{percent}}<extra></extra>',
         marker=dict(
-            colors=['#667eea','#10b981','#f59e0b','#ef4444','#06b6d4','#f97316','#8b5cf6','#ec4899','#14b8a6','#84cc16'][:len(ps)],
+            colors=['#3B82F6','#10b981','#f59e0b','#ef4444','#06b6d4','#f97316','#8b5cf6','#ec4899','#14b8a6','#84cc16'][:len(ps)],
             line=dict(color=th['card_bg'], width=2),
         ),
         textfont=dict(size=11, color=th['text']),
@@ -2447,7 +2489,7 @@ def update_expense_dashboard(session, theme, start_date, end_date,
                   'height': '100%', 'borderRadius': '9px', 'transition': 'width 0.6s ease'}
 
     EXP_C = ['#ef4444','#f97316','#f59e0b','#10b981','#06b6d4',
-              '#8b5cf6','#ec4899','#667eea','#14b8a6','#84cc16']
+              '#8b5cf6','#ec4899','#3B82F6','#14b8a6','#84cc16']
 
     if data.empty:
         line_fig = bar_fig = donut_fig = mom_fig = heat_fig = empty_fig(t)
