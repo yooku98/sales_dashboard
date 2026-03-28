@@ -953,7 +953,7 @@ def dashboard_layout():
             ]),
 
             # ── Sale Edit Modal ────────────────────────────────────────────
-            html.Div(id='sale-edit-modal', children=[
+            html.Div(id='sale-edit-modal', style={'display': 'none'}, children=[
                 html.Div(id='sale-edit-modal-inner', children=[
                     html.H3('\u270f\ufe0f Edit Sale Record',
                             style={'margin': '0 0 20px', 'fontSize': '1.15em',
@@ -987,7 +987,7 @@ def dashboard_layout():
             dcc.Store(id='sale-edit-store', storage_type='memory', data=None),
 
             # ── Expense Edit Modal ─────────────────────────────────────────
-            html.Div(id='exp-edit-modal', children=[
+            html.Div(id='exp-edit-modal', style={'display': 'none'}, children=[
                 html.Div(id='exp-edit-modal-inner', children=[
                     html.H3('\u270f\ufe0f Edit Expense Record',
                             style={'margin': '0 0 20px', 'fontSize': '1.15em',
