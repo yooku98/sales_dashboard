@@ -11,7 +11,7 @@ A Plotly Dash web app for small businesses to track sales and expenses, see tren
 - **Expenses:** the same upload/entry/edit flow, with expense trend, top vendors, expense share, heatmap and monthly budget
 - **AI insights:** executive summary, strengths and opportunities, risks, recommendations and outlook, generated through OpenRouter
 - **Export:** download the dashboard as PNG or PDF (client-side, html2canvas + jsPDF)
-- Light/dark theme and an installable PWA (manifest + service worker)
+- Light/dark theme; web app manifest for home-screen install (the service worker is not active yet: `app.py` registers `service_worker.js` but the file is named `service worker.js`)
 
 ## Stack
 
